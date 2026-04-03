@@ -1,0 +1,117 @@
+import React, { useState, useEffect } from 'react';
+
+const InventoryTracker = () => {
+  const [items, setItems] = useState(() => {
+    const saved = localStorage.getItem('tracksimply_inventory');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, name: 'Eco-Friendly Notebook', stock: 45, reorder: 10, price: 1200 },
+      { id: 2, name: 'Premium Planner', stock: 12, reorder: 5, price: 3500 },
+      { id: 3, name: 'Desktop Organizer', stock: 8, reorder: 10, price: 2800 }
+    ];
+  });
+
+  const [newItem, setNewItem] = useState({ name: '', stock: '', reorder: '', price: '' });
+
+  useEffect(() => {
+    localStorage.setItem('tracksimply_inventory', JSON.stringify(items));
+  }, [items]);
+
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    if (!newItem.name || !newItem.stock) return;
+    setItems([
+      ...items, 
+      { ...newItem, id: Date.now(), stock: parseInt(newItem.stock), reorder: parseInt(newItem.reorder) || 0, price: parseFloat(newItem.price) || 0 }
+    ]);
+    setNewItem({ name: '', stock: '', reorder: '', price: '' });
+  };
+
+  const handleStockAdj = (id, delta) => {
+    setItems(items.map(item => item.id === id ? { ...item, stock: Math.max(0, item.stock + delta) } : item));
+  };
+
+  const handleRemoveItem = (id) => {
+    setItems(items.filter(i => i.id !== id));
+  };
+
+  return (
+    <div className="tool-view">
+      <div className="title-section">
+        <h2>Inventory Tracker</h2>
+        <span className="user-badge">{items.length} items tracked</span>
+      </div>
+
+      <div className="card">
+        <h3>New Product</h3>
+        <form onSubmit={handleAddItem} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '15px', marginTop: '15px', alignItems: 'end' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Product Name</label>
+            <input type="text" placeholder="e.g. Spiral Bound" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Initial Stock</label>
+            <input type="number" placeholder="0" value={newItem.stock} onChange={e => setNewItem({...newItem, stock: e.target.value})} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Reorder Point</label>
+            <input type="number" placeholder="0" value={newItem.reorder} onChange={e => setNewItem({...newItem, reorder: e.target.value})} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Price (KES)</label>
+            <input type="number" placeholder="0.00" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ padding: '14px 30px' }}>Add Item</button>
+        </form>
+      </div>
+
+       <div className="card">
+        <h3>Stock Levels</h3>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Selling Price</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'center' }}>Stock Qty</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(item => (
+                <tr key={item.id}>
+                  <td style={{ fontWeight: 600 }}>{item.name}</td>
+                  <td>KES {item.price.toLocaleString()}</td>
+                  <td>
+                    {item.stock <= item.reorder ? (
+                      <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.85rem' }}>⚠️ LOW STOCK</span>
+                    ) : (
+                      <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.85rem' }}>✓ IN STOCK</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '15px' }}>
+                      <button className="btn" style={{ padding: '4px 10px', background: 'var(--border-soft)' }} onClick={() => handleStockAdj(item.id, -1)}>-</button>
+                      <span style={{ fontWeight: 700, minWidth: '40px' }}>{item.stock}</span>
+                      <button className="btn" style={{ padding: '4px 10px', background: 'var(--border-soft)' }} onClick={() => handleStockAdj(item.id, 1)}>+</button>
+                    </div>
+                  </td>
+                  <td>
+                    <button 
+                      onClick={() => handleRemoveItem(item.id)}
+                      style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default InventoryTracker;
