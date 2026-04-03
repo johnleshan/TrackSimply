@@ -1,8 +1,9 @@
 import React from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({ activeTool, onSelectTool }) => {
+const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) => {
   const tools = [
+    { id: 'overview', name: 'Overview', icon: '🏠' },
     { id: 'debt', name: 'Debt Tracker', icon: '💸' },
     { id: 'bookkeeping', name: 'Bookkeeping', icon: '📊' },
     { id: 'budget', name: 'Budget Planner', icon: '💰' },
@@ -10,10 +11,13 @@ const Sidebar = ({ activeTool, onSelectTool }) => {
   ];
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
         <span className="brand-icon">⚡</span>
-        TrackSimply
+        {!isCollapsed && <span className="brand-name">TrackSimply</span>}
+        <button className="collapse-btn" onClick={onToggleCollapse}>
+          {isCollapsed ? '⟩' : '⟨'}
+        </button>
       </div>
       <nav className="sidebar-nav">
         {tools.map(tool => (
@@ -22,15 +26,17 @@ const Sidebar = ({ activeTool, onSelectTool }) => {
             className={`nav-item ${activeTool === tool.id ? 'active' : ''}`}
             onClick={() => onSelectTool(tool.id)}
           >
-            <span className="nav-icon">{tool.icon}</span>
-            <span className="nav-label">{tool.name}</span>
+            <span className="nav-icon" title={isCollapsed ? tool.name : ''}>{tool.icon}</span>
+            {!isCollapsed && <span className="nav-label">{tool.name}</span>}
           </button>
         ))}
       </nav>
       <div className="sidebar-footer">
-        <div className="user-badge">
-          Personal Workspace
-        </div>
+        {!isCollapsed ? (
+          <div className="user-badge">Personal Workspace</div>
+        ) : (
+          <div className="user-badge" title="Personal Workspace">👤</div>
+        )}
       </div>
     </aside>
   );
