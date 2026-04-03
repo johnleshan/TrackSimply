@@ -171,7 +171,7 @@ const MagicAI = ({ activeTool }) => {
           cursor: pointer;
           box-shadow: var(--shadow-lg);
           z-index: 10000;
-          transition: var(--transition);
+          transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
           display: flex;
           align-items: center;
           justify-content: center;

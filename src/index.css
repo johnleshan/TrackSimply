@@ -30,6 +30,11 @@
   --radius-md: 12px;
 }
 
+/* Instant Theme Utility */
+.no-transition, .no-transition * {
+  transition: none !important;
+}
+
 [data-theme="dark"] {
   /* DARK THEME */
   --bg-primary: #0f172a;
@@ -106,7 +111,8 @@ body {
   border-radius: var(--radius-lg);
   padding: 20px; /* Mobile Card Padding */
   box-shadow: var(--shadow-lg), var(--shadow-inner);
-  transition: var(--transition);
+  /* Removed base transition to ensure theme-swapping colors are instant. 
+     Transitions should only be applied to interactive states like transform. */
 }
 
 /* Dashboard Tables - Responsive Wrap */
@@ -249,7 +255,6 @@ input:focus {
   font-weight: 700;
   cursor: pointer;
   border: none;
-  transition: var(--transition);
   display: inline-flex;
   align-items: center;
   justify-content: center;

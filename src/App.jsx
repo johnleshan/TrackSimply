@@ -31,7 +31,23 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleTheme = () => {
+    // 1. Create a global 'kill-transition' style tag
+    const css = document.createElement("style");
+    css.type = "text/css";
+    css.appendChild(document.createTextNode("*, *::before, *::after { transition: none !important; }"));
+    document.head.appendChild(css);
+
+    // 2. Switch theme
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+    // 3. Remove the tag after a few frames to restore normal UI animations (like hovers)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.head.removeChild(css);
+      });
+    });
+  };
 
   const getToolTitle = () => {
     const titles = {
@@ -128,6 +144,7 @@ function App() {
         .theme-toggle:hover {
           transform: scale(1.1);
           border-color: var(--accent-teal);
+          transition: transform 0.2s ease, border-color 0s;
         }
         @media (max-width: 768px) {
           .theme-toggle {
