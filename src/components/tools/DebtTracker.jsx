@@ -20,7 +20,7 @@ const DebtTracker = () => {
     if (!newDebt.name || !newDebt.total) return;
     setDebts([
       ...debts, 
-      { ...newDebt, id: Date.now(), total: parseFloat(newDebt.total), interest: parseFloat(newDebt.interest) || 0, minPayment: parseFloat(newDebt.minPayment) || 0 }
+      { id: Date.now(), name: newDebt.name, total: parseFloat(newDebt.total), interest: parseFloat(newDebt.interest) || 0, minPayment: parseFloat(newDebt.minPayment) || 0 }
     ]);
     setNewDebt({ name: '', total: '', interest: '', minPayment: '' });
   };
@@ -34,84 +34,76 @@ const DebtTracker = () => {
   return (
     <div className="tool-view">
       <div className="title-section">
-        <h2>Debt Tracker</h2>
-        <span className="user-badge">{debts.length} active debts</span>
+        <p style={{ color: 'var(--accent-teal)', fontSize: '0.9rem', fontWeight: 600 }}>LIABILITY OVERVIEW</p>
+        <h1 style={{ fontSize: '2.5rem' }}>Debt Tracking</h1>
+        <p style={{ color: 'var(--text-dim)' }}>Manage and analyze your current financial obligations.</p>
       </div>
 
-      <div className="card summary-card" style={{ background: 'var(--accent-teal)', color: 'white' }}>
-        <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '8px' }}>Total Debt Balance</p>
-        <h1 style={{ fontSize: '2.5rem' }}>KES {totalDebt.toLocaleString()}</h1>
-      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
+        <div className="card">
+          <h3 style={{ marginBottom: '20px' }}>Add New Debt</h3>
+          <form onSubmit={handleAddDebt} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Debt Name</label>
+              <input type="text" placeholder="e.g. Car Loan" value={newDebt.name} onChange={e => setNewDebt({...newDebt, name: e.target.value})} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Total Balance (KES)</label>
+              <input type="number" placeholder="0.00" value={newDebt.total} onChange={e => setNewDebt({...newDebt, total: e.target.value})} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Interest (%)</label>
+              <input type="number" placeholder="0.0" value={newDebt.interest} onChange={e => setNewDebt({...newDebt, interest: e.target.value})} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Min. Payment (KES)</label>
+              <input type="number" placeholder="0.00" value={newDebt.minPayment} onChange={e => setNewDebt({...newDebt, minPayment: e.target.value})} style={{ width: '100%' }} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '16px' }}>Log New Obligation</button>
+            </div>
+          </form>
+        </div>
 
-      <div className="card">
-        <h3>Add New Debt</h3>
-        <form onSubmit={handleAddDebt} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '15px', marginTop: '15px', alignItems: 'end' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Debt Name</label>
-            <input 
-              type="text" 
-              placeholder="e.g. Car Loan" 
-              value={newDebt.name} 
-              onChange={e => setNewDebt({...newDebt, name: e.target.value})} 
-            />
+        <div className="card" style={{ background: 'linear-gradient(135deg, var(--accent-teal-soft), transparent)' }}>
+          <h3>Total Summary</h3>
+          <div style={{ padding: '30px 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '20px' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Aggregate Debt</p>
+            <h1 style={{ fontSize: '3rem', margin: '10px 0' }}>KES {totalDebt.toLocaleString()}</h1>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Amount (KES)</label>
-            <input 
-              type="number" 
-              placeholder="0.00" 
-              value={newDebt.total} 
-              onChange={e => setNewDebt({...newDebt, total: e.target.value})} 
-            />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ color: 'var(--text-dim)' }}>Active Accounts</p>
+            <span style={{ background: 'var(--accent-teal)', color: '#0f172a', padding: '4px 12px', borderRadius: '20px', fontWeight: 800 }}>{debts.length}</span>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Interest Rate (%)</label>
-            <input 
-              type="number" 
-              placeholder="0.0" 
-              value={newDebt.interest} 
-              onChange={e => setNewDebt({...newDebt, interest: e.target.value})} 
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Min. Payment (KES)</label>
-            <input 
-              type="number" 
-              placeholder="0.00" 
-              value={newDebt.minPayment} 
-              onChange={e => setNewDebt({...newDebt, minPayment: e.target.value})} 
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" style={{ padding: '14px 30px' }}>Add Debt</button>
-        </form>
+        </div>
       </div>
 
       <div className="card">
-        <h3>Active Debts</h3>
-        <div className="table-container">
+        <h3>Active Obligations</h3>
+        <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
               <tr>
                 <th>Debt Name</th>
-                <th>Total Balance</th>
-                <th>Interest</th>
-                <th>Min. Payment</th>
+                <th>Current Balance</th>
+                <th>Interest Rate</th>
+                <th>Monthly Min</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {debts.map(debt => (
                 <tr key={debt.id}>
-                  <td style={{ fontWeight: 600 }}>{debt.name}</td>
+                  <td style={{ fontWeight: 700, color: '#fff' }}>{debt.name}</td>
                   <td>KES {debt.total.toLocaleString()}</td>
                   <td>{debt.interest}%</td>
                   <td>KES {debt.minPayment.toLocaleString()}</td>
                   <td>
                     <button 
                       onClick={() => handleRemoveDebt(debt.id)}
-                      style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                      style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
                     >
-                      Delete
+                      REMOVE
                     </button>
                   </td>
                 </tr>

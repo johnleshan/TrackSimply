@@ -3,39 +3,47 @@ import './Sidebar.css';
 
 const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) => {
   const tools = [
-    { id: 'overview', name: 'Overview', icon: '🏠' },
-    { id: 'debt', name: 'Debt Tracker', icon: '💸' },
-    { id: 'bookkeeping', name: 'Bookkeeping', icon: '📊' },
-    { id: 'budget', name: 'Budget Planner', icon: '💰' },
+    { id: 'overview', name: 'Dashboard', icon: '💎' },
+    { id: 'debt', name: 'Debt Tracker', icon: '📈' },
+    { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝' },
+    { id: 'budget', name: 'Budget Planner', icon: '⚖️' },
     { id: 'inventory', name: 'Inventory', icon: '📦' }
   ];
 
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      <div className="sidebar-brand">
-        <span className="brand-icon">⚡</span>
-        {!isCollapsed && <span className="brand-name">TrackSimply</span>}
-        <button className="collapse-btn" onClick={onToggleCollapse}>
-          {isCollapsed ? '⟩' : '⟨'}
+      <div className="sidebar-header">
+        <div className="sidebar-brand">
+          <div className="brand-logo">TS</div>
+          {!isCollapsed && <span className="brand-name">TrackSimply</span>}
+        </div>
+        <button className="toggle-sidebar-btn" onClick={onToggleCollapse} title={isCollapsed ? 'Expand' : 'Collapse'}>
+          {isCollapsed ? '→' : '←'}
         </button>
       </div>
+
       <nav className="sidebar-nav">
         {tools.map(tool => (
           <button 
             key={tool.id} 
-            className={`nav-item ${activeTool === tool.id ? 'active' : ''}`}
+            className={`nav-link ${activeTool === tool.id ? 'active' : ''}`}
             onClick={() => onSelectTool(tool.id)}
           >
-            <span className="nav-icon" title={isCollapsed ? tool.name : ''}>{tool.icon}</span>
-            {!isCollapsed && <span className="nav-label">{tool.name}</span>}
+            <span className="nav-icon">{tool.icon}</span>
+            <span className="nav-label">{tool.name}</span>
           </button>
         ))}
       </nav>
+
       <div className="sidebar-footer">
-        {!isCollapsed ? (
-          <div className="user-badge">Personal Workspace</div>
-        ) : (
-          <div className="user-badge" title="Personal Workspace">👤</div>
+        {!isCollapsed && (
+          <div className="profile-card">
+            <div className="avatar">👤</div>
+            <div className="profile-info">
+              <p className="profile-name">Personal Space</p>
+              <p className="profile-status">Active</p>
+            </div>
+          </div>
         )}
       </div>
     </aside>
