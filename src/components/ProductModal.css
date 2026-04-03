@@ -1,0 +1,297 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-content {
+  background-color: white;
+  width: 100%;
+  max-width: 1000px;
+  max-height: 90vh;
+  border-radius: 24px;
+  position: relative;
+  overflow: hidden;
+  color: #333;
+  display: flex;
+}
+
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: white;
+  color: #333;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: var(--transition);
+}
+
+.close-btn:hover {
+  transform: rotate(90deg);
+  background: #f8f9fa;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+}
+
+.modal-left {
+  padding: 40px;
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.modal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.modal-carousel-controls {
+  position: absolute;
+  top: 50%;
+  left: -20px;
+  right: -20px;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  width: calc(100% + 40px);
+}
+
+.m-carousel-btn {
+  background: white;
+  color: #333;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.modal-dots {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ddd;
+}
+
+.dot.active {
+  background: #333;
+}
+
+/* Right Section */
+.modal-right {
+  padding: 60px 40px;
+  overflow-y: auto;
+}
+
+.m-product-name {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.m-product-author {
+  font-size: 1rem;
+  color: #7f8c8d;
+  margin-bottom: 25px;
+}
+
+.m-product-description {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 30px;
+}
+
+/* Files Dropdown */
+.files-dropdown {
+  margin-bottom: 30px;
+}
+
+.files-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.files-header.open .chevron {
+  transform: rotate(180deg);
+}
+
+.files-list {
+  margin-top: 15px;
+  padding-left: 15px;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.files-list li {
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.files-list li::before {
+  content: '•';
+  position: absolute;
+  left: -15px;
+  color: #333;
+}
+
+/* Purchase Section */
+.quantity-selector {
+  margin-bottom: 25px;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #eee;
+  border-radius: 30px;
+  padding: 5px;
+}
+
+.count-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.count-btn:hover {
+  background: #f8f9fa;
+}
+
+.count {
+  padding: 0 20px;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: center;
+}
+
+.price-section {
+  margin-bottom: 35px;
+}
+
+.m-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.add-to-bag-btn {
+  background: #1a3a3a;
+  color: white;
+  padding: 18px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.add-to-bag-btn:hover {
+  background: #254a4a;
+  transform: translateY(-2px);
+}
+
+.contact-btn {
+  background: #f8f9fa;
+  color: #333;
+  padding: 18px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.contact-btn:hover {
+  background: #eee;
+}
+
+.heart-icon {
+  margin-right: 5px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .modal-content {
+    flex-direction: column;
+    max-height: 95vh;
+  }
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-left {
+    padding: 30px;
+  }
+  .modal-right {
+    padding: 30px;
+  }
+  .m-product-name {
+    font-size: 1.8rem;
+  }
+}
