@@ -17,9 +17,6 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) =>
           <div className="brand-logo">TS</div>
           {!isCollapsed && <span className="brand-name">TrackSimply</span>}
         </div>
-        <button className="toggle-sidebar-btn" onClick={onToggleCollapse} title={isCollapsed ? 'Expand' : 'Collapse'}>
-          {isCollapsed ? '→' : '←'}
-        </button>
       </div>
 
       <nav className="sidebar-nav">
@@ -30,10 +27,19 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) =>
             onClick={() => onSelectTool(tool.id)}
           >
             <span className="nav-icon">{tool.icon}</span>
-            <span className="nav-label">{tool.name}</span>
+            {!isCollapsed && <span className="nav-label">{tool.name}</span>}
           </button>
         ))}
       </nav>
+
+      {/* Floating Toggle Button - Perfectly Positioned */}
+      <button 
+        className="floating-toggle-btn" 
+        onClick={onToggleCollapse} 
+        title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+      >
+        {isCollapsed ? '⟩' : '⟨'}
+      </button>
 
       <div className="sidebar-footer">
         {!isCollapsed && (

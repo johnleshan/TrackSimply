@@ -3,47 +3,39 @@
   border-right: 1px solid var(--glass-border);
   height: 100vh;
   width: 280px;
-  padding: 30px 20px;
+  padding: 40px 20px;
   display: flex;
   flex-direction: column;
-  transition: var(--transition);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  z-index: 100;
 }
 
 .sidebar.collapsed {
   width: 80px;
-  padding: 30px 10px;
+  padding: 40px 10px;
 }
 
 .sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 50px;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  margin-bottom: 60px;
 }
 
 .brand-logo {
   background: linear-gradient(135deg, var(--accent-teal), #06b7d2);
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   color: #0f172a;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 8px 16px var(--accent-teal-soft);
 }
 
 .brand-name {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-main);
   background: linear-gradient(to bottom, #fff 0%, var(--accent-teal) 100%);
@@ -51,49 +43,56 @@
   -webkit-text-fill-color: transparent;
 }
 
-.toggle-sidebar-btn {
-  background: var(--glass-card);
-  border: 1px solid var(--glass-border);
-  color: var(--text-main);
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+/* HIGHLY PROMINENT FLOATING TOGGLE */
+.floating-toggle-btn {
+  position: absolute;
+  right: -18px;
+  top: 52px;
+  background: var(--accent-teal);
+  color: #0f172a;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
   transition: var(--transition);
+  border: 4px solid var(--bg-primary); /* Integrated border look */
 }
 
-.toggle-sidebar-btn:hover {
-  background: var(--accent-teal);
-  color: #0f172a;
-  border-color: var(--accent-teal);
+.floating-toggle-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px var(--accent-teal-soft);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px 20px;
-  border-radius: var(--radius-md);
+  gap: 18px;
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
   color: var(--text-dim);
   font-weight: 500;
   transition: var(--transition);
-  text-decoration: none;
   background: none;
-  border: none;
+  border: 1px solid transparent;
   width: 100%;
 }
 
 .sidebar.collapsed .nav-link {
-  padding: 14px;
+  padding: 16px;
   justify-content: center;
 }
 
@@ -105,11 +104,11 @@
 .nav-link.active {
   background: var(--accent-teal-soft);
   color: var(--accent-teal);
-  border: 1px solid var(--accent-teal-soft);
+  border-color: var(--accent-teal-soft);
 }
 
 .nav-icon {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
 }
 
 .nav-label {
@@ -117,40 +116,29 @@
   transition: var(--transition);
 }
 
-.sidebar.collapsed .nav-label {
-  opacity: 0;
-  width: 0;
-  margin: 0;
-}
-
 .sidebar-footer {
   margin-top: auto;
-  padding-top: 20px;
-  border-top: 1px solid var(--glass-border);
+  padding-top: 30px;
 }
 
 .profile-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
+  gap: 14px;
+  padding: 15px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .avatar {
   background: var(--glass-card);
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.profile-info {
-  line-height: 1.2;
-}
-
-.profile-name { font-size: 0.85rem; font-weight: 600; color: white; }
-.profile-status { font-size: 0.75rem; color: var(--text-dim); }
+.profile-name { font-size: 0.9rem; font-weight: 600; color: #fff; }
+.profile-status { font-size: 0.8rem; color: var(--text-dim); }
