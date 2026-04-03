@@ -1,15 +1,22 @@
 .sidebar {
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--glass-border);
-  height: 100vh;
-  width: 280px;
-  padding: 40px 20px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  position: relative;
-  backdrop-filter: blur(24px);
-  z-index: 100;
+  display: none; /* Hidden on mobile by default */
+}
+
+/* Desktop Sidebar */
+@media (min-width: 768px) {
+  .sidebar {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--glass-border);
+    height: 100vh;
+    width: 280px;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    backdrop-filter: blur(24px);
+    z-index: 100;
+  }
 }
 
 .sidebar.collapsed {
@@ -39,6 +46,7 @@
   font-weight: 700;
   color: var(--text-main);
   background: linear-gradient(to bottom, #fff 0%, var(--accent-teal) 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -142,3 +150,57 @@
 
 .profile-name { font-size: 0.9rem; font-weight: 600; color: #fff; }
 .profile-status { font-size: 0.8rem; color: var(--text-dim); }
+
+/* Mobile Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 5px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom)); /* Support for notched phones */
+  z-index: 1000;
+}
+
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
+.bottom-nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  flex: 1;
+  transition: var(--transition);
+}
+
+.bottom-nav-link.active {
+  color: var(--accent-teal);
+}
+
+.bottom-nav-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bottom-nav-link .nav-icon {
+  font-size: 1.3rem;
+  margin-bottom: 2px;
+}
+
+.bottom-nav-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+}

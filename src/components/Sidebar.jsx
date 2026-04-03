@@ -1,7 +1,7 @@
 import React from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) => {
+const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse, isMobile }) => {
   const tools = [
     { id: 'overview', name: 'Dashboard', icon: '💎' },
     { id: 'debt', name: 'Debt Tracker', icon: '📈' },
@@ -9,6 +9,23 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) =>
     { id: 'budget', name: 'Budget Planner', icon: '⚖️' },
     { id: 'inventory', name: 'Inventory', icon: '📦' }
   ];
+
+  if (isMobile) {
+    return (
+      <nav className="bottom-nav">
+        {tools.map(tool => (
+          <button 
+            key={tool.id} 
+            className={`bottom-nav-link ${activeTool === tool.id ? 'active' : ''}`}
+            onClick={() => onSelectTool(tool.id)}
+          >
+            <span className="nav-icon">{tool.icon}</span>
+            <span className="bottom-nav-label">{tool.name.split(' ')[0]}</span>
+          </button>
+        ))}
+      </nav>
+    );
+  }
 
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
@@ -32,7 +49,6 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse }) =>
         ))}
       </nav>
 
-      {/* Floating Toggle Button - Perfectly Positioned */}
       <button 
         className="floating-toggle-btn" 
         onClick={onToggleCollapse} 
