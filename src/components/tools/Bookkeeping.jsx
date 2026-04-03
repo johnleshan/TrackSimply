@@ -15,6 +15,16 @@ const Bookkeeping = () => {
     localStorage.setItem('tracksimply_transactions', JSON.stringify(transactions));
   }, [transactions]);
 
+  // AI Sync Listener
+  useEffect(() => {
+    const handleSync = () => {
+      const saved = localStorage.getItem('tracksimply_transactions');
+      if (saved) setTransactions(JSON.parse(saved));
+    };
+    window.addEventListener('tracksimply-ai-sync', handleSync);
+    return () => window.removeEventListener('tracksimply-ai-sync', handleSync);
+  }, []);
+
   const handleAddTx = (e) => {
     e.preventDefault();
     if (!newTx.description || !newTx.amount) return;

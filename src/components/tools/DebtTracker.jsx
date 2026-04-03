@@ -15,6 +15,16 @@ const DebtTracker = () => {
     localStorage.setItem('tracksimply_debts', JSON.stringify(debts));
   }, [debts]);
 
+  // AI Sync Listener
+  useEffect(() => {
+    const handleSync = () => {
+      const saved = localStorage.getItem('tracksimply_debts');
+      if (saved) setDebts(JSON.parse(saved));
+    };
+    window.addEventListener('tracksimply-ai-sync', handleSync);
+    return () => window.removeEventListener('tracksimply-ai-sync', handleSync);
+  }, []);
+
   const handleAddDebt = (e) => {
     e.preventDefault();
     if (!newDebt.name || !newDebt.total) return;

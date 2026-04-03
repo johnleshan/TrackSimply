@@ -16,6 +16,16 @@ const BudgetPlanner = () => {
     localStorage.setItem('tracksimply_budgets', JSON.stringify(budgets));
   }, [budgets]);
 
+  // AI Sync Listener
+  useEffect(() => {
+    const handleSync = () => {
+      const saved = localStorage.getItem('tracksimply_budgets');
+      if (saved) setBudgets(JSON.parse(saved));
+    };
+    window.addEventListener('tracksimply-ai-sync', handleSync);
+    return () => window.removeEventListener('tracksimply-ai-sync', handleSync);
+  }, []);
+
   const handleAddBudget = (e) => {
     e.preventDefault();
     if (!newBudget.category || !newBudget.amount) return;

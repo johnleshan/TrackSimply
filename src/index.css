@@ -1,7 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Premium Midnight-to-Teal Gradient Palette */
+  /* LIGHT THEME (DEFAULT) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff; 
+  --bg-sidebar: rgba(255, 255, 255, 0.9);
+  --glass-card: #ffffff;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --accent-teal: #0891b2; /* Deeper Cyan/Teal for contrast on light */
+  --accent-teal-soft: rgba(8, 145, 178, 0.1);
+  --text-main: #1e293b;
+  --text-dim: #64748b;
+  --text-dark: #334155;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+
+  /* AI SPECIFIC (High Contrast) */
+  --ai-window-bg: #1e293b; /* Dark by default to stand out on light */
+  --ai-window-text: #f8fafc;
+  --ai-msg-assistant: rgba(255, 255, 255, 0.05);
+  --ai-msg-user: rgba(8, 145, 178, 0.2);
+  
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-inner: inset 0 0 4px rgba(0, 0, 0, 0.02);
+  --transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+}
+
+[data-theme="dark"] {
+  /* DARK THEME */
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b; 
   --bg-sidebar: rgba(15, 23, 42, 0.95);
@@ -15,13 +45,13 @@
   --success: #10b981;
   --danger: #f43f5e;
   --warning: #f59e0b;
-  
+
+  --ai-window-bg: #ffffff; /* Light on dark to stand out */
+  --ai-window-text: #0f172a;
+  --ai-msg-assistant: rgba(0, 0, 0, 0.05);
+  --ai-msg-user: rgba(8, 145, 178, 0.1);
+
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-  --shadow-inner: inset 0 0 10px rgba(255, 255, 255, 0.05);
-  --transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  --radius-xl: 24px;
-  --radius-lg: 16px;
-  --radius-md: 12px;
 }
 
 * {
@@ -31,11 +61,16 @@
 }
 
 body {
-  background: radial-gradient(circle at top right, #112222 0%, #0f172a 100%);
+  background: var(--bg-primary);
   color: var(--text-main);
   font-family: 'Outfit', sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background 0.3s ease;
+}
+
+[data-theme="dark"] body {
+  background: radial-gradient(circle at top right, #112222 0%, #0f172a 100%);
 }
 
 /* Dashboard Layout - Default Mobile (Stacked) */
@@ -61,28 +96,6 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-.btn-primary:hover {
-  box-shadow: 0 0 20px var(--accent-teal-soft);
-  transform: translateY(-1px) scale(1.02);
-}
-
-/* Responsive Grid Utilities */
-.grid-cols-2, .grid-cols-3, .grid-cols-4, .grid-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-@media (min-width: 768px) {
-  .grid-cols-2 { display: grid; grid-template-columns: repeat(2, 1fr); }
-  .grid-cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
-  .grid-cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); }
-  .grid-form { display: grid; grid-template-columns: 1fr 1fr; align-items: end; }
-  .grid-form.wide { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-}
-
-/* Scrollbar */
 
 /* Card - Responsive Spacing */
 .card {
@@ -144,10 +157,10 @@ table {
   margin-bottom: 10px;
 }
 
-h1, h2 {
+h1, h2, .gradient-text {
   font-weight: 700;
   letter-spacing: -0.5px;
-  background: linear-gradient(to right, #fff 0%, var(--accent-teal) 100%);
+  background: linear-gradient(to right, var(--text-main) 0%, var(--accent-teal) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -162,16 +175,47 @@ h1, h2 {
 
 /* Forms */
 input, select {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
-  color: white;
+  color: var(--text-main);
   padding: 12px 16px;
   border-radius: var(--radius-md);
   font-size: 16px; /* Prevent iPhone auto-zoom */
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px var(--accent-teal-soft);
 }
 
 /* Buttons - Large Mobile Hit Areas */
 .btn {
   padding: 14px 28px;
   min-height: 48px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-teal) 0%, #06b6d4 100%);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 20px var(--accent-teal-soft);
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-teal); }

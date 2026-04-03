@@ -16,6 +16,16 @@ const InventoryTracker = () => {
     localStorage.setItem('tracksimply_inventory', JSON.stringify(items));
   }, [items]);
 
+  // AI Sync Listener
+  useEffect(() => {
+    const handleSync = () => {
+      const saved = localStorage.getItem('tracksimply_inventory');
+      if (saved) setItems(JSON.parse(saved));
+    };
+    window.addEventListener('tracksimply-ai-sync', handleSync);
+    return () => window.removeEventListener('tracksimply-ai-sync', handleSync);
+  }, []);
+
   const handleAddItem = (e) => {
     e.preventDefault();
     if (!newItem.name || !newItem.stock) return;

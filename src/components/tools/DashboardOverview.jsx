@@ -18,6 +18,7 @@ const DashboardOverview = ({ onSelectTool }) => {
   }, []);
 
   const features = [
+    { id: 'ai', icon: '✨', title: 'AI Assistant', desc: 'Speak naturally to manage your entire app. Proactive alerts and smart financial logic.', stat: 'Groq Powered' },
     { id: 'debt', icon: '📈', title: 'Debt Mastery', desc: 'Visualize and conquer liabilities with precise tracking of interest rates and payoff goals.', stat: `KES ${stats.totalDebt.toLocaleString()} tracked` },
     { id: 'bookkeeping', icon: '📝', title: 'Business Pulse', desc: 'Log every income and expense. Real-time Profit/Loss for the modern entrepreneur.', stat: `Net: KES ${stats.netProfit.toLocaleString()}` },
     { id: 'budget', icon: '⚖️', title: 'Budget Intelligence', desc: 'Intelligent category-based spending control with live progress indicators.', stat: `${stats.budgetUtil.toFixed(1)}% utilized` },

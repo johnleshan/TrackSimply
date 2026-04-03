@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
+import MagicAI from './components/MagicAI';
 import DashboardOverview from './components/tools/DashboardOverview';
 import DebtTracker from './components/tools/DebtTracker';
 import Bookkeeping from './components/tools/Bookkeeping';
@@ -17,12 +18,20 @@ function App() {
   const [activeTool, setActiveTool] = useState('overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [theme, setTheme] = useState(localStorage.getItem('tracksimply_theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('tracksimply_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const getToolTitle = () => {
     const titles = {
@@ -55,6 +64,12 @@ function App() {
   return (
     <div className={`dashboard-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {isMobile && <MobileHeader title={getToolTitle()} />}
+      
+      {/* Theme Toggle - Top Right */}
+      <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme">
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
+
       <Sidebar 
         activeTool={activeTool} 
         onSelectTool={setActiveTool} 
@@ -65,6 +80,8 @@ function App() {
       <main className="main-content">
         {renderTool()}
       </main>
+
+      <MagicAI activeTool={activeTool} />
 
       <style>{`
         .mobile-header {
@@ -88,6 +105,38 @@ function App() {
         }
         @media (min-width: 768px) {
           .mobile-header { display: none; }
+        }
+
+        .theme-toggle {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: var(--bg-secondary);
+          border: 1px solid var(--glass-border);
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 2000;
+          box-shadow: var(--shadow-lg);
+          transition: var(--transition);
+          font-size: 1.2rem;
+        }
+        .theme-toggle:hover {
+          transform: scale(1.1);
+          border-color: var(--accent-teal);
+        }
+        @media (max-width: 768px) {
+          .theme-toggle {
+            top: 15px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            font-size: 1rem;
+          }
         }
       `}</style>
     </div>
