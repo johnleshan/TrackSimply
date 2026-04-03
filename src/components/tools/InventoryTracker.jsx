@@ -91,16 +91,16 @@ const InventoryTracker = () => {
             <tbody>
               {items.map(item => (
                 <tr key={item.id}>
-                  <td style={{ fontWeight: 700, color: '#fff' }}>{item.name}</td>
-                  <td>KES {item.price.toLocaleString()}</td>
-                  <td>
+                  <td data-label="Product Name" style={{ fontWeight: 700, color: '#fff' }}>{item.name}</td>
+                  <td data-label="Selling Price">KES {item.price.toLocaleString()}</td>
+                  <td data-label="Status">
                     {item.stock <= item.reorder ? (
                       <span style={{ color: 'var(--danger)', fontWeight: 800, fontSize: '0.75rem', background: 'rgba(244,63,94,0.1)', padding: '4px 10px', borderRadius: '20px' }}>LOW STOCK</span>
                     ) : (
                       <span style={{ color: 'var(--success)', fontWeight: 800, fontSize: '0.75rem', background: 'rgba(16,185,129,0.1)', padding: '4px 10px', borderRadius: '20px' }}>✓ IN STOCK</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td data-label="Stock Adjustment" style={{ textAlign: 'center' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '15px' }}>
                       <button className="btn" style={{ padding: '4px 10px', minHeight: '34px', background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => handleStockAdj(item.id, -1)}>-</button>
                       <span style={{ fontWeight: 800, minWidth: '40px', color: '#fff' }}>{item.stock}</span>

@@ -324,8 +324,8 @@ const MagicAI = ({ activeTool }) => {
 
         @media (max-width: 768px) {
           .ai-chat-window { width: calc(100% - 40px); right: 20px; bottom: 85px; }
-          .ai-toggle { bottom: 20px; right: 20px; width: 50px; height: 50px; }
-          .proactive-bubble { bottom: 90px; right: 20px; }
+          .ai-toggle { bottom: 85px; right: 20px; width: 50px; height: 50px; }
+          .proactive-bubble { bottom: 145px; right: 20px; }
         }
       `}</style>
     </>

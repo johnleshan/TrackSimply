@@ -83,43 +83,61 @@ const BudgetPlanner = () => {
            <input type="text" placeholder="e.g. Dining Out" value={newBudget.category} onChange={e => setNewBudget({...newBudget, category: e.target.value})} style={{ width: '100%' }} />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Target Budget (KES)</label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Target (KES)</label>
             <input type="number" placeholder="0.00" value={newBudget.amount} onChange={e => setNewBudget({...newBudget, amount: e.target.value})} style={{ width: '100%' }} />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Set Budget</button>
         </form>
       </div>
 
-      <div className="grid-cols-2" style={{ gap: '20px' }}>
-        {budgets.map(b => {
-           const percent = (b.actual / b.budget) * 100;
-           const isOver = b.actual > b.budget;
-           return (
-             <div key={b.id} className="card" style={{ padding: '20px' }}>
-               <div style={{ display: 'flex', justifySelf: 'space-between', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                 <h4 style={{ color: '#fff' }}>{b.category}</h4>
-                 <span style={{ color: isOver ? 'var(--danger)' : 'var(--text-dim)', fontWeight: 600, fontSize: '0.85rem' }}>
-                   {percent.toFixed(0)}%
-                 </span>
-               </div>
-               <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ 
-                      height: '100%', 
-                      width: `${Math.min(percent, 100)}%`, 
-                      background: isOver ? 'var(--danger)' : 'var(--accent-teal)',
-                      transition: 'var(--transition)'
-                    }}></div>
-               </div>
-               <p style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                 KES {b.actual.toLocaleString()} spent of KES {b.budget.toLocaleString()}
-               </p>
-               <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                   <button className="btn btn-secondary" style={{ flex: 1, padding: '10px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => handleAddSpend(b.id)}>Add Spend</button>
-                   <button className="btn" style={{ padding: '10px', background: 'rgba(244,63,94,0.1)', color: 'var(--danger)', fontSize: '0.8rem' }} onClick={() => setBudgets(budgets.filter(x => x.id !== b.id))}>Delete</button>
-               </div>
-             </div>
-           )
-        })}
+      <div className="card">
+        <h3 style={{ marginBottom: '20px' }}>Budget Allocations</h3>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Target</th>
+                <th>Actual</th>
+                <th>Utilization</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {budgets.map(b => (
+                <tr key={b.id}>
+                  <td data-label="Category" style={{ fontWeight: 700, color: '#fff' }}>{b.category}</td>
+                  <td data-label="Target">KES {b.budget.toLocaleString()}</td>
+                  <td data-label="Actual" style={{ 
+                    fontWeight: 700, 
+                    color: b.actual > b.budget ? 'var(--danger)' : 'var(--success)' 
+                  }}>
+                    KES {b.actual.toLocaleString()}
+                  </td>
+                  <td data-label="Utilization">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: `${Math.min((b.actual / b.budget) * 100, 100)}%`, 
+                          height: '100%', 
+                          background: b.actual > b.budget ? 'var(--danger)' : 'var(--accent-teal)',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{((b.actual / b.budget) * 100).toFixed(0)}%</span>
+                    </div>
+                  </td>
+                  <td data-label="Actions">
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button onClick={() => handleAddSpend(b.id)} style={{ color: 'var(--accent-teal)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>+ Spend</button>
+                      <button onClick={() => setBudgets(budgets.filter(x => x.id !== b.id))} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

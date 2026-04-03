@@ -66,7 +66,7 @@ body {
   font-family: 'Outfit', sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
-  transition: background 0.3s ease;
+  /* Removed transition for instant theme switching as requested */
 }
 
 [data-theme="dark"] body {
@@ -112,15 +112,67 @@ body {
 /* Dashboard Tables - Responsive Wrap */
 .table-container {
   width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Removed min-width 600px to allow card-style stacking on mobile */
 }
 
 table {
   width: 100%;
-  min-width: 600px; /* Force scroll on narrow screens */
   border-collapse: separate;
   border-spacing: 0 10px;
+}
+
+/* UNIVERSAL STACKED TABLES FOR MOBILE (No-Scroll UX) */
+@media (max-width: 768px) {
+  table, thead, tbody, th, td, tr { 
+    display: block; 
+  }
+  
+  thead tr { 
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  tr {
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    margin-bottom: 15px;
+    border-radius: var(--radius-md);
+    padding: 10px;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  td { 
+    border: none;
+    position: relative;
+    padding-left: 50% !important; 
+    text-align: right;
+    min-height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+
+  [data-theme="dark"] td {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  td:last-child { border-bottom: 0; }
+  
+  td:before { 
+    position: absolute;
+    left: 15px;
+    width: 45%; 
+    padding-right: 10px; 
+    white-space: nowrap;
+    content: attr(data-label);
+    font-weight: 700;
+    text-align: left;
+    color: var(--accent-teal);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
 }
 
 /* Desktop Enhancements (768px+) */

@@ -105,16 +105,38 @@ const Bookkeeping = () => {
                 <th>Category</th>
                 <th>Type</th>
                 <th>Amount</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {[...transactions].reverse().map(tx => (
                 <tr key={tx.id}>
-                  <td>{tx.date}</td>
-                  <td style={{ fontWeight: 700, color: '#fff' }}>{tx.description}</td>
-                  <td><span style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', fontSize: '0.75rem' }}>{tx.category}</span></td>
-                  <td style={{ color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>{tx.type}</td>
-                  <td style={{ fontWeight: 700 }}>KES {tx.amount.toLocaleString()}</td>
+                  <td data-label="Date" style={{ fontSize: '0.85rem' }}>{tx.date}</td>
+                  <td data-label="Details" style={{ fontWeight: 600, color: '#fff' }}>{tx.description}</td>
+                  <td data-label="Cat" style={{ fontSize: '0.8rem' }}>{tx.category}</td>
+                  <td data-label="Type">
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      borderRadius: '20px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: 700,
+                      background: tx.type === 'Income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
+                      color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)'
+                    }}>
+                      {tx.type}
+                    </span>
+                  </td>
+                  <td data-label="Amount" style={{ 
+                    fontWeight: 700, 
+                    color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)' 
+                  }}>
+                    {tx.type === 'Income' ? '+' : '-'} {tx.amount.toLocaleString()}
+                  </td>
+                  <td data-label="Action">
+                    <button onClick={() => handleDelete(tx.id)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
