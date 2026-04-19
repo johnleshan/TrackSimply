@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
           
           // Default system accounts (fallback if local is empty)
           const defaultUsers = [
-            { username: 'superadmin', password: '6mAQoU^X4S^coiu7%qba*!K8nQT5$$w2Z86NS&s5szhsGh4M7QHPbeRG^d5Jc9mUaYsZdQ^jMJU*gtWPtKuHdChwm2LSM#$9UhDJtQRCBkR^FjH@WSmZxrCNvc8uVKq7', role: 'superadmin', active: true },
+            { username: 'superadmin', password: 'password', role: 'superadmin', active: true },
             { username: 'admin', password: 'password', role: 'admin', active: true },
             { username: 'user', password: 'password', role: 'user', active: true }
           ];
@@ -72,8 +72,11 @@ export const AuthProvider = ({ children }) => {
         .single();
       
       if (error || !data) {
+        console.error('Login attempt failed for:', username, error ? `(Error: ${error.message})` : '(User not found or password mismatch)');
         return { success: false, reason: 'Invalid username or password' };
       }
+
+      console.log('Login successful for:', username);
 
       if (!data.active) {
         return { success: false, reason: 'This account has been deactivated by an admin.' };
