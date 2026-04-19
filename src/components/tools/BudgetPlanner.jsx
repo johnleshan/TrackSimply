@@ -33,7 +33,26 @@ const BudgetPlanner = () => {
       }
       fetchBudgets();
     };
-    if (user) initData();
+    if (user) {
+      initData();
+
+      // Real-time synchronization
+      const channel = supabase
+        .channel('budgets-realtime')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'budgets',
+          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+        }, () => {
+          fetchBudgets();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const handleAddBudget = async (e) => {

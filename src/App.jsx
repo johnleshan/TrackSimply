@@ -197,7 +197,7 @@ function App() {
         .current-view-title {
           font-weight: 700;
           font-size: 1.1rem;
-          color: white;
+          color: var(--text-main);
           text-transform: uppercase;
           letter-spacing: 1px;
         }

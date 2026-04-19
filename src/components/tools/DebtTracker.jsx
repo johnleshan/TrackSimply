@@ -33,7 +33,26 @@ const DebtTracker = () => {
       }
       fetchDebts();
     };
-    if (user) initData();
+    if (user) {
+      initData();
+
+      // Real-time synchronization
+      const channel = supabase
+        .channel('debts-realtime')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'debts',
+          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+        }, () => {
+          fetchDebts();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const handleAddDebt = async (e) => {

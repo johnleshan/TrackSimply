@@ -52,7 +52,22 @@ const DashboardOverview = ({ onSelectTool }) => {
       }
     };
 
-    if (user) fetchStats();
+    if (user) {
+      fetchStats();
+
+      // Real-time synchronization for all dashboard stats
+      const channel = supabase
+        .channel('dashboard-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'debts' }, () => fetchStats())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchStats())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchStats())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets' }, () => fetchStats())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const features = [

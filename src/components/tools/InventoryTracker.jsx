@@ -33,7 +33,26 @@ const InventoryTracker = () => {
       }
       fetchItems();
     };
-    if (user) initData();
+    if (user) {
+      initData();
+
+      // Real-time synchronization
+      const channel = supabase
+        .channel('inventory-realtime')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'inventory',
+          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+        }, () => {
+          fetchItems();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const handleAddItem = async (e) => {

@@ -148,7 +148,7 @@
   justify-content: center;
 }
 
-.profile-name { font-size: 0.9rem; font-weight: 600; color: #fff; }
+.profile-name { font-size: 0.9rem; font-weight: 600; color: var(--text-main); }
 .profile-status { font-size: 0.8rem; color: var(--text-dim); }
 
 /* Mobile Bottom Navigation */
