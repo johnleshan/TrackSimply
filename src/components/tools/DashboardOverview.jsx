@@ -1,42 +1,80 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const DashboardOverview = ({ onSelectTool }) => {
+  const { user } = useAuth();
   const [stats, setStats] = useState({ totalDebt: 0, netProfit: 0, lowStock: 0, budgetUtil: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const debts = JSON.parse(localStorage.getItem('tracksimply_debts') || '[]');
-    const txs = JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]');
-    const budgets = JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]');
-    const inventory = JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]');
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        const userId = user?.id;
+        const isAdmin = ['admin', 'superadmin'].includes(user?.role);
 
-    const totalDebt = debts.reduce((sum, d) => sum + d.total, 0);
-    const profit = txs.reduce((acc, tx) => acc + (tx.type === 'Income' ? tx.amount : -tx.amount), 0);
-    const lowStock = inventory.filter(i => i.stock <= i.reorder).length;
-    let totalB = 0, actualB = 0;
-    budgets.forEach(b => { totalB += b.budget; actualB += b.actual; });
-    setStats({ totalDebt, netProfit: profit, lowStock, budgetUtil: totalB > 0 ? (actualB / totalB) * 100 : 0 });
-  }, []);
+        // 1. Debts
+        let debtQuery = supabase.from('debts').select('total');
+        if (!isAdmin) debtQuery = debtQuery.eq('user_id', userId);
+        const { data: debtData } = await debtQuery;
+        const totalDebt = debtData?.reduce((sum, d) => sum + Number(d.total), 0) || 0;
+
+        // 2. Bookkeeping (Profit)
+        let txQuery = supabase.from('transactions').select('amount, type');
+        if (!isAdmin) txQuery = txQuery.eq('user_id', userId);
+        const { data: txData } = await txQuery;
+        const profit = txData?.reduce((acc, tx) => acc + (tx.type === 'Income' ? Number(tx.amount) : -Number(tx.amount)), 0) || 0;
+
+        // 3. Inventory
+        let invQuery = supabase.from('inventory').select('stock, reorder');
+        if (!isAdmin) invQuery = invQuery.eq('user_id', userId);
+        const { data: invData } = await invQuery;
+        const lowStock = invData?.filter(i => i.stock <= i.reorder).length || 0;
+
+        // 4. Budgets
+        let budQuery = supabase.from('budgets').select('budget, actual');
+        if (!isAdmin) budQuery = budQuery.eq('user_id', userId);
+        const { data: budData } = await budQuery;
+        let totalB = 0, actualB = 0;
+        budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });
+        
+        setStats({ 
+          totalDebt, 
+          netProfit: profit, 
+          lowStock, 
+          budgetUtil: totalB > 0 ? (actualB / totalB) * 100 : 0 
+        });
+      } catch (err) {
+        console.error('Stats Fetch Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) fetchStats();
+  }, [user]);
 
   const features = [
     { id: 'ai', icon: '✨', title: 'AI Assistant', desc: 'Speak naturally to manage your entire app. Proactive alerts and smart financial logic.' },
-    { id: 'debt', icon: '📈', title: 'Debt Mastery', desc: 'Visualize and conquer liabilities with precise tracking of interest rates and payoff goals.', stat: `KES ${stats.totalDebt.toLocaleString()} tracked` },
-    { id: 'bookkeeping', icon: '📝', title: 'Business Pulse', desc: 'Log every income and expense. Real-time Profit/Loss for the modern entrepreneur.', stat: `Net: KES ${stats.netProfit.toLocaleString()}` },
-    { id: 'budget', icon: '⚖️', title: 'Budget Intelligence', desc: 'Intelligent category-based spending control with live progress indicators.', stat: `${stats.budgetUtil.toFixed(1)}% utilized` },
-    { id: 'inventory', icon: '📦', title: 'Active Inventory', desc: 'Real-time stock monitoring with smart reorder alerts. Never run out.', stat: `${stats.lowStock} low stock items` },
+    { id: 'debt', icon: '📈', title: 'Debt Mastery', desc: 'Visualize and conquer liabilities with precise tracking of interest rates and payoff goals.', stat: loading ? 'Syncing...' : `KES ${stats.totalDebt.toLocaleString()} tracked` },
+    { id: 'bookkeeping', icon: '📝', title: 'Business Pulse', desc: 'Log every income and expense. Real-time Profit/Loss for the modern entrepreneur.', stat: loading ? 'Syncing...' : `Net: KES ${stats.netProfit.toLocaleString()}` },
+    { id: 'budget', icon: '⚖️', title: 'Budget Intelligence', desc: 'Intelligent category-based spending control with live progress indicators.', stat: loading ? 'Syncing...' : `${stats.budgetUtil.toFixed(1)}% utilized` },
+    { id: 'inventory', icon: '📦', title: 'Active Inventory', desc: 'Real-time stock monitoring with smart reorder alerts. Never run out.', stat: loading ? 'Syncing...' : `${stats.lowStock} low stock items` },
   ];
 
   return (
     <div className="tool-view">
       {/* Hero Section */}
       <div style={{ textAlign: 'center', padding: '20px 0 10px' }}>
-        <p style={{ color: 'var(--accent-teal)', fontWeight: 700, letterSpacing: '2px', marginBottom: '12px', fontSize: '0.8rem' }}>ONE TOOL. ALL YOUR TRACKING.</p>
+        <p style={{ color: 'var(--accent-teal)', fontWeight: 700, letterSpacing: '2px', marginBottom: '12px', fontSize: '0.8rem' }}>ONE TOOL. CLOUD SYNCED.</p>
         <h1 style={{ fontSize: 'clamp(2rem, 7vw, 4.5rem)', marginBottom: '15px' }}>TrackSimply</h1>
         <p style={{ color: 'var(--text-dim)', maxWidth: '700px', margin: '0 auto', fontSize: 'clamp(0.9rem, 2.5vw, 1.15rem)', lineHeight: 1.6 }}>
-          The ultimate personal dashboard for debts, bookkeeping, budgets, and inventory. Built for speed, privacy, and absolute clarity.
+          The ultimate personal dashboard for debts, bookkeeping, budgets, and inventory. Now with real-time cloud persistence for all your devices.
         </p>
       </div>
 
-      {/* Feature Cards Grid - 1 col mobile, 2 col desktop */}
+      {/* Feature Cards Grid */}
       <div className="grid-cols-2" style={{ gap: '20px' }}>
         {features.map(feat => (
           <div key={feat.id} className="card" onClick={() => onSelectTool(feat.id)}
@@ -49,30 +87,32 @@ const DashboardOverview = ({ onSelectTool }) => {
               <div style={{ flex: 1 }}>
                 <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.7rem)', marginBottom: '8px', color: 'var(--text-main)' }}>{feat.title}</h2>
                 <p style={{ color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: '12px', fontSize: '0.9rem' }}>{feat.desc}</p>
-                <span style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-teal)', fontWeight: 700 }}>
-                  {feat.stat}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                   <span style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-teal)', fontWeight: 700 }}>
+                    {feat.stat}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Why TrackSimply - 1 col mobile, 3 col desktop */}
+      {/* Why TrackSimply */}
       <div className="card">
         <h3 style={{ textAlign: 'center', marginBottom: '25px' }}>Why TrackSimply?</h3>
         <div className="grid-cols-3" style={{ gap: '25px', textAlign: 'center' }}>
           <div>
-            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>🔒 PRIVACY FIRST</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>Your data is stored 100% locally. We never see your numbers.</p>
+            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>☁️ CLOUD SYNC</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>Your data is powered by Supabase. Access it from anywhere, on any device.</p>
           </div>
           <div>
-            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>⚡ INSTANT SETUP</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>No delays. Instant interaction, instant results, zero friction.</p>
+            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>⚡ INSTANT AUTO-SAVE</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>No delays. Every transaction is saved instantly to the cloud without effort.</p>
           </div>
           <div>
             <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>💎 PREMIUM UX</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>A sophisticated experience designed for maximum productivity.</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>A sophisticated experience designed for maximum productivity and clarity.</p>
           </div>
         </div>
       </div>

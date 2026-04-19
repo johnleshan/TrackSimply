@@ -1,27 +1,59 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  // Init default admin user if no users exist
-  useEffect(() => {
-    const existingUsers = localStorage.getItem('tracksimply_users');
-    if (!existingUsers) {
-      const defaultUsers = [
-        { id: '1', username: 'admin', password: 'password', role: 'admin' },
-        { id: '2', username: 'user', password: 'password', role: 'user' }
-      ];
-      localStorage.setItem('tracksimply_users', JSON.stringify(defaultUsers));
-    }
-  }, []);
-
   const [user, setUser] = useState(() => {
     const savedSession = localStorage.getItem('tracksimply_session');
     return savedSession ? JSON.parse(savedSession) : null;
   });
 
+  const [loading, setLoading] = useState(true);
+
+  // Migration and Initialization
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        // 1. Check if we need to migrate or seed default users
+        const { data: remoteUsers, error } = await supabase.from('site_users').select('id').limit(1);
+        
+        if (!error && (!remoteUsers || remoteUsers.length === 0)) {
+          console.log('Seeding cloud database with default/local accounts...');
+          
+          const localUsers = JSON.parse(localStorage.getItem('tracksimply_users') || '[]');
+          
+          // Default system accounts (fallback if local is empty)
+          const defaultUsers = [
+            { username: 'superadmin', password: '6mAQoU^X4S^coiu7%qba*!K8nQT5$$w2Z86NS&s5szhsGh4M7QHPbeRG^d5Jc9mUaYsZdQ^jMJU*gtWPtKuHdChwm2LSM#$9UhDJtQRCBkR^FjH@WSmZxrCNvc8uVKq7', role: 'superadmin', active: true },
+            { username: 'admin', password: 'password', role: 'admin', active: true },
+            { username: 'user', password: 'password', role: 'user', active: true }
+          ];
+
+          const accountsToUpload = localUsers.length > 0 ? localUsers : defaultUsers;
+          
+          // Upload to Supabase (site_users table)
+          // Note: we remove local IDs to let Supabase generate UUIDs
+          const formatted = accountsToUpload.map(({ username, password, role, active }) => ({
+            username, password, role, active
+          }));
+
+          await supabase.from('site_users').insert(formatted);
+          console.log('Seeding/Migration complete.');
+        }
+      } catch (err) {
+        console.error('Auth Initialization Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
+
+  // Sync session to LocalStorage (for fast initial load)
   useEffect(() => {
     if (user) {
       localStorage.setItem('tracksimply_session', JSON.stringify(user));
@@ -30,15 +62,29 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
-  const login = (username, password) => {
-    const users = JSON.parse(localStorage.getItem('tracksimply_users') || '[]');
-    const authUser = users.find(u => u.username === username && u.password === password);
-    
-    if (authUser) {
-      setUser({ id: authUser.id, role: authUser.role, username: authUser.username });
-      return true;
+  const login = async (username, password) => {
+    try {
+      const { data, error } = await supabase
+        .from('site_users')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .single();
+      
+      if (error || !data) {
+        return { success: false, reason: 'Invalid username or password' };
+      }
+
+      if (!data.active) {
+        return { success: false, reason: 'This account has been deactivated by an admin.' };
+      }
+
+      const sessionUser = { id: data.id, role: data.role, username: data.username };
+      setUser(sessionUser);
+      return { success: true };
+    } catch (err) {
+      return { success: false, reason: 'Connection error. Please try again.' };
     }
-    return false;
   };
 
   const logout = () => {
@@ -46,7 +92,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

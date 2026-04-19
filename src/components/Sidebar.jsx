@@ -6,12 +6,12 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse, isMo
   const { user } = useAuth();
   
   const allTools = [
-    { id: 'overview', name: 'Dashboard', icon: '💎', roles: ['admin', 'user'] },
-    { id: 'debt', name: 'Debt Tracker', icon: '📈', roles: ['admin'] },
-    { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝', roles: ['admin', 'user'] },
-    { id: 'budget', name: 'Budget Planner', icon: '⚖️', roles: ['admin'] },
-    { id: 'inventory', name: 'Inventory', icon: '📦', roles: ['admin', 'user'] },
-    { id: 'accounts', name: 'Account Mgmt', icon: '🛡️', roles: ['admin'] }
+    { id: 'overview', name: 'Dashboard', icon: '💎', roles: ['superadmin', 'admin', 'user'] },
+    { id: 'debt', name: 'Debt Tracker', icon: '📈', roles: ['superadmin', 'admin'] },
+    { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝', roles: ['superadmin', 'admin', 'user'] },
+    { id: 'budget', name: 'Budget Planner', icon: '⚖️', roles: ['superadmin', 'admin'] },
+    { id: 'inventory', name: 'Inventory', icon: '📦', roles: ['superadmin', 'admin', 'user'] },
+    { id: 'accounts', name: 'Account Mgmt', icon: '🛡️', roles: ['superadmin', 'admin'] }
   ];
 
   const tools = allTools.filter(tool => tool.roles.includes(user?.role));
@@ -68,7 +68,7 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse, isMo
           <div className="profile-card">
             <div className="avatar">👤</div>
             <div className="profile-info">
-              <p className="profile-name">Personal Space</p>
+              <p className="profile-name" style={{ textTransform: 'capitalize' }}>{user?.username || 'Guest'}</p>
               <p className="profile-status">Active</p>
             </div>
           </div>

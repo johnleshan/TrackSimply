@@ -20,12 +20,19 @@ const LoginScreen = () => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const success = login(username, password);
-    if (!success) setError('Invalid username or password');
+    setIsSubmitting(true);
+    setError('');
+    const result = await login(username, password);
+    if (!result.success) {
+      setError(result.reason);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -48,26 +55,49 @@ const LoginScreen = () => {
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Password</label>
-            <input 
-              type="password" 
-              placeholder="Password" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              style={{ width: '100%' }} 
-              required 
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="Password" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                style={{ width: '100%' }} 
+                required 
+              />
+              <button 
+                type="button" 
+                className="reveal-btn" 
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
           </div>
           {error && <p style={{ color: 'var(--danger)', fontSize: '0.8rem', textAlign: 'center' }}>{error}</p>}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Sign In</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }} disabled={isSubmitting}>
+            {isSubmitting ? 'Verifying Account...' : 'Sign In'}
+          </button>
         </form>
-        
       </div>
     </div>
   );
 };
 
+const LoadingScreen = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)', color: 'var(--accent-teal)' }}>
+    <div style={{ textAlign: 'center' }}>
+      <div className="spinner" style={{ width: '50px', height: '50px', border: '5px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent-teal)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }}></div>
+      <p style={{ fontWeight: 600, letterSpacing: '1px' }}>CONNECTING TO CLOUD...</p>
+    </div>
+    <style>{`
+      @keyframes spin { to { transform: rotate(360deg); } }
+    `}</style>
+  </div>
+);
+
 function App() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [activeTool, setActiveTool] = useState('overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -116,6 +146,10 @@ function App() {
       default: return <DashboardOverview onSelectTool={setActiveTool} />;
     }
   };
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   if (!user) {
     return <LoginScreen />;

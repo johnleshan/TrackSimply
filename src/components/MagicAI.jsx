@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatWithAI } from '../services/aiService';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const MagicAI = ({ activeTool }) => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: 'assistant', content: "Hello! I'm your TrackSimply AI. I can help you log transactions, analyze your budget, and track your debts. How can I assist you today?" }
@@ -39,35 +42,50 @@ const MagicAI = ({ activeTool }) => {
   // Proactive Logic: Check for insights when the tool changes
   useEffect(() => {
     const runProactiveCheck = async () => {
-      const data = {
-        debts: JSON.parse(localStorage.getItem('tracksimply_debts') || '[]'),
-        txs: JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]'),
-        budgets: JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]'),
-        inventory: JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]')
-      };
-
-      let insight = null;
+      if (!user) return;
       
-      // Proactive rules
-      const totalBudget = data.budgets.reduce((sum, b) => sum + b.budget, 0);
-      const totalActual = data.budgets.reduce((sum, b) => sum + b.actual, 0);
-      if (totalBudget > 0 && totalActual > totalBudget * 0.9) {
-        insight = `⚠️ Budget Alert: You've used over 90% of your total monthly budget.`;
-      }
+      try {
+        const userId = user.id;
+        const isAdmin = ['admin', 'superadmin'].includes(user?.role);
 
-      const lowStock = data.inventory.filter(i => i.stock <= i.reorder);
-      if (lowStock.length > 0) {
-        insight = `📦 Inventory Alert: ${lowStock.length} items are low on stock. Check ${lowStock[0].name}.`;
-      }
+        // Snapshots for analysis
+        let invQuery = supabase.from('inventory').select('name, stock, reorder');
+        if (!isAdmin) invQuery = invQuery.eq('user_id', userId);
+        const { data: inventory } = await invQuery;
 
-      if (insight) {
-        setProactiveInsight(insight);
-        setTimeout(() => setProactiveInsight(null), 8000); // Clear after 8s
+        let budQuery = supabase.from('budgets').select('budget, actual');
+        if (!isAdmin) budQuery = budQuery.eq('user_id', userId);
+        const { data: budgets } = await budQuery;
+
+        let insight = null;
+        
+        // Proactive rules
+        if (budgets) {
+          const totalBudget = budgets.reduce((sum, b) => sum + Number(b.budget), 0);
+          const totalActual = budgets.reduce((sum, b) => sum + Number(b.actual), 0);
+          if (totalBudget > 0 && totalActual > totalBudget * 0.9) {
+            insight = `⚠️ Budget Alert: You've used over 90% of your total monthly budget.`;
+          }
+        }
+
+        if (inventory) {
+          const lowStock = inventory.filter(i => i.stock <= i.reorder);
+          if (lowStock.length > 0) {
+            insight = `📦 Inventory Alert: ${lowStock.length} items are low on stock. Check ${lowStock[0].name}.`;
+          }
+        }
+
+        if (insight) {
+          setProactiveInsight(insight);
+          setTimeout(() => setProactiveInsight(null), 8000); // Clear after 8s
+        }
+      } catch (err) {
+        console.error('Proactive Insight Error:', err);
       }
     };
 
     runProactiveCheck();
-  }, [activeTool]);
+  }, [activeTool, user]);
 
   const handleSend = async (e) => {
     e.preventDefault();

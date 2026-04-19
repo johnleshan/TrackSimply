@@ -1,29 +1,79 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const AccountManager = () => {
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem('tracksimply_users');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user' });
+  const [showPassword, setShowPassword] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  useEffect(() => {
-    localStorage.setItem('tracksimply_users', JSON.stringify(users));
-  }, [users]);
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('site_users')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (!error && data) setUsers(data);
+    setLoading(false);
+  };
 
-  const handleAddUser = (e) => {
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Stealth Filtering: Admins don't see superadmins
+  const visibleUsers = users.filter(u => {
+    if (currentUser?.role === 'admin' && u.role === 'superadmin') return false;
+    return true;
+  });
+
+  const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUser.username || !newUser.password) return;
     
     if (editingId) {
-      setUsers(users.map(u => u.id === editingId ? { ...newUser, id: editingId } : u));
-      setEditingId(null);
+      const { error } = await supabase
+        .from('site_users')
+        .update({ username: newUser.username, password: newUser.password, role: newUser.role })
+        .eq('id', editingId);
+      
+      if (!error) {
+        setEditingId(null);
+        fetchUsers();
+      }
     } else {
-      setUsers([...users, { ...newUser, id: Date.now().toString() }]);
+      const { error } = await supabase
+        .from('site_users')
+        .insert([{ ...newUser, active: true }]);
+      
+      if (!error) fetchUsers();
     }
     setNewUser({ username: '', password: '', role: 'user' });
+    setShowPassword(false);
+  };
+
+  const handleToggleStatus = async (user) => {
+    // Hierarchy Check
+    if (user.role === 'superadmin') {
+      alert('Super Admin accounts cannot be deactivated.');
+      return;
+    }
+    if (currentUser?.role === 'admin' && user.role === 'admin') {
+      alert('You do not have permission to deactivate other admins.');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('site_users')
+      .update({ active: !user.active })
+      .eq('id', user.id);
+    
+    if (!error) fetchUsers();
   };
 
   const handleEdit = (user) => {
@@ -31,9 +81,24 @@ const AccountManager = () => {
     setEditingId(user.id);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(u => u.id !== id));
+  const handleDelete = async (user) => {
+    // Hierarchy Check
+    if (user.role === 'superadmin') {
+      alert('Super Admin accounts cannot be deleted.');
+      return;
+    }
+    if (currentUser?.role === 'admin' && user.role === 'admin') {
+      alert('You do not have permission to delete other admins.');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${user.username}?`)) {
+      const { error } = await supabase
+        .from('site_users')
+        .delete()
+        .eq('id', user.id);
+      
+      if (!error) fetchUsers();
     }
   };
 
@@ -60,13 +125,23 @@ const AccountManager = () => {
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Password</label>
-            <input 
-              type="password" 
-              placeholder="Password" 
-              value={newUser.password} 
-              onChange={e => setNewUser({...newUser, password: e.target.value})} 
-              style={{ width: '100%' }} 
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="Password" 
+                value={newUser.password} 
+                onChange={e => setNewUser({...newUser, password: e.target.value})} 
+                style={{ width: '100%' }} 
+              />
+              <button 
+                type="button" 
+                className="reveal-btn" 
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Role</label>
@@ -76,7 +151,7 @@ const AccountManager = () => {
               style={{ width: '100%' }}
             >
               <option value="user">User</option>
-              <option value="admin">Admin</option>
+              {currentUser?.role === 'superadmin' && <option value="admin">Admin</option>}
             </select>
           </div>
           <div style={{ alignSelf: 'end' }}>
@@ -88,41 +163,56 @@ const AccountManager = () => {
       </div>
 
       <div className="card">
-        <h3>System Users</h3>
+        <h3>System Users {loading && <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginLeft: '10px' }}>(Syncing...)</span>}</h3>
         <div className="table-container" style={{ marginTop: '15px' }}>
           <table>
             <thead>
               <tr>
                 <th>Username</th>
                 <th>Role</th>
-                <th>Password</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
+              {visibleUsers.map(u => (
                 <tr key={u.id}>
                   <td data-label="Username" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{u.username}</td>
                   <td data-label="Role">
-                    <span style={{ 
-                      padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
-                      background: u.role === 'admin' ? 'rgba(8, 145, 178, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                      color: u.role === 'admin' ? 'var(--accent-teal)' : 'var(--text-dim)'
-                    }}>
+                    <span className={`badge ${u.role === 'superadmin' ? 'badge-purple' : u.role === 'admin' ? 'badge-info' : ''}`}>
                       {u.role.toUpperCase()}
                     </span>
                   </td>
-                  <td data-label="Password" style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>••••••••</td>
+                  <td data-label="Status">
+                     <span className={`badge ${u.active ? 'badge-success' : 'badge-danger'}`}>
+                      {u.active ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </td>
                   <td data-label="Actions">
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => handleEdit(u)} style={{ color: 'var(--accent-teal)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>Edit</button>
-                      <button 
-                        onClick={() => handleDelete(u.id)} 
-                        style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}
-                        disabled={u.username === 'admin'}
-                      >
-                        Delete
-                      </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {u.role !== 'superadmin' && !(currentUser?.role === 'admin' && u.role === 'admin') && (
+                        <>
+                          <button 
+                            onClick={() => handleToggleStatus(u)} 
+                            className={`btn-action ${u.active ? 'danger' : ''}`}
+                            title={u.active ? 'Deactivate Account' : 'Activate Account'}
+                          >
+                            {u.active ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(u)} 
+                            className="btn-action"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(u)} 
+                            className="btn-action danger"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

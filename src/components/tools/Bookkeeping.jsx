@@ -1,80 +1,110 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const Bookkeeping = () => {
   const { user } = useAuth();
-  // Standard users default to vehicles, admin defaults to business
-  const [activeTab, setActiveTab] = useState(user?.role === 'admin' ? 'business' : 'vehicles');
+  const [activeTab, setActiveTab] = useState(['admin', 'superadmin'].includes(user?.role) ? 'business' : 'vehicles');
+  const [loading, setLoading] = useState(true);
 
-  // Business State
-  const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('tracksimply_transactions');
-    return saved ? JSON.parse(saved) : [
-      { id: 1, date: '2026-04-01', description: 'Web Design Project', amount: 50000, type: 'Income', category: 'Services' },
-      { id: 2, date: '2026-04-02', description: 'Hosting Subscription', amount: 2500, type: 'Expense', category: 'Software' }
-    ];
-  });
+  // Unified Cloud State
+  const [allTransactions, setAllTransactions] = useState([]);
   const [newTx, setNewTx] = useState({ date: new Date().toISOString().split('T')[0], description: '', amount: '', type: 'Income', category: 'General' });
-
-  // Vehicles State
-  const [vehicleTxs, setVehicleTxs] = useState(() => {
-    const saved = localStorage.getItem('tracksimply_vehicle_transactions');
-    return saved ? JSON.parse(saved) : [];
-  });
   const [newVehicleTx, setNewVehicleTx] = useState({ date: new Date().toISOString().split('T')[0], description: '', vehicleReg: '', amount: '', type: 'Expense', category: 'Fuel' });
 
-  useEffect(() => {
-    localStorage.setItem('tracksimply_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+  const fetchTransactions = async () => {
+    setLoading(true);
+    // Simple filter: Users see their own, Admins see all
+    let query = supabase.from('transactions').select('*');
+    if (!['admin', 'superadmin'].includes(user?.role)) {
+      query = query.eq('user_id', user.id);
+    }
+    
+    const { data, error } = await query.order('date', { ascending: false });
+    if (!error && data) setAllTransactions(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    localStorage.setItem('tracksimply_vehicle_transactions', JSON.stringify(vehicleTxs));
-  }, [vehicleTxs]);
-
-  // AI Sync Listener
-  useEffect(() => {
-    const handleSync = () => {
-      const savedBus = localStorage.getItem('tracksimply_transactions');
-      if (savedBus) setTransactions(JSON.parse(savedBus));
-      const savedVeh = localStorage.getItem('tracksimply_vehicle_transactions');
-      if (savedVeh) setVehicleTxs(JSON.parse(savedVeh));
+    const initData = async () => {
+      // One-time migration check
+      const localBus = JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]');
+      const localVeh = JSON.parse(localStorage.getItem('tracksimply_vehicle_transactions') || '[]');
+      
+      const { data: remoteCount } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
+      
+      if (remoteCount === 0 && (localBus.length > 0 || localVeh.length > 0)) {
+        console.log('Migrating local transactions to cloud...');
+        const busToUpload = localBus.map(t => ({
+          user_id: user.id, date: t.date, description: t.description, amount: t.amount, 
+          type: t.type, category: t.category, source: 'business'
+        }));
+        const vehToUpload = localVeh.map(t => ({
+          user_id: user.id, date: t.date, description: t.description, amount: t.amount, 
+          type: t.type, category: t.category, source: 'vehicle', vehicle_reg: t.vehicleReg
+        }));
+        
+        await supabase.from('transactions').insert([...busToUpload, ...vehToUpload]);
+      }
+      fetchTransactions();
     };
-    window.addEventListener('tracksimply-ai-sync', handleSync);
-    return () => window.removeEventListener('tracksimply-ai-sync', handleSync);
-  }, []);
 
-  const handleAddTx = (e) => {
+    if (user) initData();
+  }, [user]);
+
+  const handleAddTx = async (e) => {
     e.preventDefault();
     if (!newTx.description || !newTx.amount) return;
-    setTransactions([
-      ...transactions, 
-      { ...newTx, id: Date.now(), amount: parseFloat(newTx.amount) }
-    ]);
-    setNewTx({ date: new Date().toISOString().split('T')[0], description: '', amount: '', type: 'Income', category: 'General' });
+    
+    const { error } = await supabase.from('transactions').insert([{
+      ...newTx, user_id: user.id, amount: parseFloat(newTx.amount), source: 'business'
+    }]);
+
+    if (!error) {
+      setNewTx({ date: new Date().toISOString().split('T')[0], description: '', amount: '', type: 'Income', category: 'General' });
+      fetchTransactions();
+    }
   };
 
-  const handleAddVehicleTx = (e) => {
+  const handleAddVehicleTx = async (e) => {
     e.preventDefault();
     if (!newVehicleTx.description || !newVehicleTx.amount || !newVehicleTx.vehicleReg) return;
-    setVehicleTxs([
-      ...vehicleTxs, 
-      { ...newVehicleTx, id: Date.now(), amount: parseFloat(newVehicleTx.amount) }
-    ]);
-    setNewVehicleTx({ date: new Date().toISOString().split('T')[0], description: '', vehicleReg: '', amount: '', type: 'Expense', category: 'Fuel' });
+    
+    const { error } = await supabase.from('transactions').insert([{
+      user_id: user.id,
+      date: newVehicleTx.date,
+      description: newVehicleTx.description,
+      amount: parseFloat(newVehicleTx.amount),
+      type: newVehicleTx.type,
+      category: newVehicleTx.category,
+      source: 'vehicle',
+      vehicle_reg: newVehicleTx.vehicleReg
+    }]);
+
+    if (!error) {
+      setNewVehicleTx({ date: new Date().toISOString().split('T')[0], description: '', vehicleReg: '', amount: '', type: 'Expense', category: 'Fuel' });
+      fetchTransactions();
+    }
   };
 
-  const handleDeleteBus = (id) => setTransactions(transactions.filter(t => t.id !== id));
-  const handleDeleteVeh = (id) => setVehicleTxs(vehicleTxs.filter(t => t.id !== id));
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (!error) fetchTransactions();
+  };
 
-  const busTotals = transactions.reduce((acc, tx) => {
-    if (tx.type === 'Income') acc.income += tx.amount;
-    else acc.expense += tx.amount;
+  // Filter local state based on active tab
+  const businessTxs = allTransactions.filter(t => t.source === 'business');
+  const vehicleTxs = allTransactions.filter(t => t.source === 'vehicle');
+
+  const busTotals = businessTxs.reduce((acc, tx) => {
+    if (tx.type === 'Income') acc.income += Number(tx.amount);
+    else acc.expense += Number(tx.amount);
     return acc;
   }, { income: 0, expense: 0 });
 
   const vehTotals = vehicleTxs.reduce((acc, tx) => {
-    if (tx.type === 'Income') acc.income += tx.amount;
-    else acc.expense += tx.amount;
+    if (tx.type === 'Income') acc.income += Number(tx.amount);
+    else acc.expense += Number(tx.amount);
     return acc;
   }, { income: 0, expense: 0 });
 
@@ -82,22 +112,16 @@ const Bookkeeping = () => {
   const combinedExpense = busTotals.expense + vehTotals.expense;
   const combinedProfit = combinedIncome - combinedExpense;
 
-  // Render role restrictions
-  if (user?.role !== 'admin' && activeTab === 'business') {
-    setActiveTab('vehicles');
-  }
-
   return (
     <div className="tool-view">
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
         <div className="title-section" style={{ marginBottom: 0 }}>
           <p style={{ color: 'var(--accent-teal)', fontSize: '0.8rem', fontWeight: 600 }}>TRANSACTION HUB</p>
-          <h1>Bookkeeping</h1>
+          <h1>Bookkeeping {loading && <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginLeft: '10px' }}>(Syncing...)</span>}</h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Monitor income and expense streams for your entire operation.</p>
         </div>
         
-        {/* Tab Selection */}
-        {user?.role === 'admin' && (
+        {['admin', 'superadmin'].includes(user?.role) && (
           <div style={{ display: 'flex', gap: '10px', background: 'var(--glass-card)', padding: '5px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
             <button 
               className={`btn ${activeTab === 'business' ? 'btn-primary' : ''}`}
@@ -185,25 +209,21 @@ const Bookkeeping = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...transactions].reverse().map(tx => (
+                  {businessTxs.map(tx => (
                     <tr key={tx.id}>
                       <td data-label="Date" style={{ fontSize: '0.85rem' }}>{tx.date}</td>
                       <td data-label="Details" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{tx.description}</td>
                       <td data-label="Cat" style={{ fontSize: '0.8rem' }}>{tx.category}</td>
                       <td data-label="Type">
-                        <span style={{ 
-                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
-                          background: tx.type === 'Income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
-                          color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)'
-                        }}>
+                        <span className={`badge ${tx.type === 'Income' ? 'badge-success' : 'badge-danger'}`}>
                           {tx.type}
                         </span>
                       </td>
                       <td data-label="Amount" style={{ fontWeight: 700, color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)' }}>
-                        {tx.type === 'Income' ? '+' : '-'} {tx.amount.toLocaleString()}
+                        {tx.type === 'Income' ? '+' : '-'} {Number(tx.amount).toLocaleString()}
                       </td>
                       <td data-label="Action">
-                        <button onClick={() => handleDeleteBus(tx.id)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>Delete</button>
+                        <button onClick={() => handleDelete(tx.id)} className="btn-action danger">Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -268,26 +288,22 @@ const Bookkeeping = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...vehicleTxs].reverse().map(tx => (
+                  {vehicleTxs.map(tx => (
                     <tr key={tx.id}>
                       <td data-label="Date" style={{ fontSize: '0.85rem' }}>{tx.date}</td>
-                      <td data-label="Reg No" style={{ fontWeight: 800, color: 'var(--accent-teal)' }}>{tx.vehicleReg}</td>
+                      <td data-label="Reg No" style={{ fontWeight: 800, color: 'var(--accent-teal)' }}>{tx.vehicle_reg}</td>
                       <td data-label="Details" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{tx.description}</td>
                       <td data-label="Cat" style={{ fontSize: '0.8rem' }}>{tx.category}</td>
                       <td data-label="Type">
-                        <span style={{ 
-                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
-                          background: tx.type === 'Income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
-                          color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)'
-                        }}>
+                        <span className={`badge ${tx.type === 'Income' ? 'badge-success' : 'badge-danger'}`}>
                           {tx.type}
                         </span>
                       </td>
                       <td data-label="Amount" style={{ fontWeight: 700, color: tx.type === 'Income' ? 'var(--success)' : 'var(--danger)' }}>
-                        {tx.type === 'Income' ? '+' : '-'} {tx.amount.toLocaleString()}
+                        {tx.type === 'Income' ? '+' : '-'} {Number(tx.amount).toLocaleString()}
                       </td>
                       <td data-label="Action">
-                        <button onClick={() => handleDeleteVeh(tx.id)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>Delete</button>
+                        <button onClick={() => handleDelete(tx.id)} className="btn-action danger">Delete</button>
                       </td>
                     </tr>
                   ))}
