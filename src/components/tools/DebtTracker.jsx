@@ -106,7 +106,7 @@ const DebtTracker = () => {
             <tbody>
               {debts.map(debt => (
                 <tr key={debt.id}>
-                  <td data-label="Debt Name" style={{ fontWeight: 700, color: '#fff' }}>{debt.name}</td>
+                  <td data-label="Debt Name" style={{ fontWeight: 700, color: 'var(--text-main)' }}>{debt.name}</td>
                   <td data-label="Balance">KES {debt.total.toLocaleString()}</td>
                   <td data-label="Interest">{debt.interest}%</td>
                   <td data-label="Payment">KES {debt.minPayment.toLocaleString()}</td>

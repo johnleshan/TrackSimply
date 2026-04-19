@@ -47,7 +47,7 @@ const DashboardOverview = ({ onSelectTool }) => {
             <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div style={{ fontSize: '2.5rem', background: 'var(--accent-teal-soft)', padding: '16px', borderRadius: '14px', flexShrink: 0 }}>{feat.icon}</div>
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.7rem)', marginBottom: '8px', color: '#fff' }}>{feat.title}</h2>
+                <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.7rem)', marginBottom: '8px', color: 'var(--text-main)' }}>{feat.title}</h2>
                 <p style={{ color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: '12px', fontSize: '0.9rem' }}>{feat.desc}</p>
                 <span style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-teal)', fontWeight: 700 }}>
                   {feat.stat}

@@ -1,14 +1,20 @@
 import React from 'react';
 import './Sidebar.css';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse, isMobile }) => {
-  const tools = [
-    { id: 'overview', name: 'Dashboard', icon: '💎' },
-    { id: 'debt', name: 'Debt Tracker', icon: '📈' },
-    { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝' },
-    { id: 'budget', name: 'Budget Planner', icon: '⚖️' },
-    { id: 'inventory', name: 'Inventory', icon: '📦' }
+  const { user } = useAuth();
+  
+  const allTools = [
+    { id: 'overview', name: 'Dashboard', icon: '💎', roles: ['admin', 'user'] },
+    { id: 'debt', name: 'Debt Tracker', icon: '📈', roles: ['admin'] },
+    { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝', roles: ['admin', 'user'] },
+    { id: 'budget', name: 'Budget Planner', icon: '⚖️', roles: ['admin'] },
+    { id: 'inventory', name: 'Inventory', icon: '📦', roles: ['admin', 'user'] },
+    { id: 'accounts', name: 'Account Mgmt', icon: '🛡️', roles: ['admin'] }
   ];
+
+  const tools = allTools.filter(tool => tool.roles.includes(user?.role));
 
   if (isMobile) {
     return (

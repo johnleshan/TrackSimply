@@ -91,7 +91,7 @@ const InventoryTracker = () => {
             <tbody>
               {items.map(item => (
                 <tr key={item.id}>
-                  <td data-label="Product Name" style={{ fontWeight: 700, color: '#fff' }}>{item.name}</td>
+                  <td data-label="Product Name" style={{ fontWeight: 700, color: 'var(--text-main)' }}>{item.name}</td>
                   <td data-label="Selling Price">KES {item.price.toLocaleString()}</td>
                   <td data-label="Status">
                     {item.stock <= item.reorder ? (
@@ -102,9 +102,9 @@ const InventoryTracker = () => {
                   </td>
                   <td data-label="Stock Adjustment" style={{ textAlign: 'center' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '15px' }}>
-                      <button className="btn" style={{ padding: '4px 10px', minHeight: '34px', background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => handleStockAdj(item.id, -1)}>-</button>
-                      <span style={{ fontWeight: 800, minWidth: '40px', color: '#fff' }}>{item.stock}</span>
-                      <button className="btn" style={{ padding: '4px 10px', minHeight: '34px', background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => handleStockAdj(item.id, 1)}>+</button>
+                      <button className="btn" style={{ padding: '4px 10px', minHeight: '34px', background: 'var(--glass-card)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }} onClick={() => handleStockAdj(item.id, -1)}>-</button>
+                      <span style={{ fontWeight: 800, minWidth: '40px', color: 'var(--text-main)' }}>{item.stock}</span>
+                      <button className="btn" style={{ padding: '4px 10px', minHeight: '34px', background: 'var(--glass-card)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }} onClick={() => handleStockAdj(item.id, 1)}>+</button>
                     </div>
                   </td>
                   <td>

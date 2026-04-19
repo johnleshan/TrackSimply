@@ -68,7 +68,7 @@ const BudgetPlanner = () => {
             </div>
           </div>
           <div style={{ textAlign: 'right', alignSelf: 'center' }}>
-             <h2 style={{ color: totalActual > totalBudget ? 'var(--danger)' : '#fff', fontSize: '1.5rem' }}>
+             <h2 style={{ color: totalActual > totalBudget ? 'var(--danger)' : 'var(--text-main)', fontSize: '1.5rem' }}>
               KES {totalActual.toLocaleString()} / KES {totalBudget.toLocaleString()}
             </h2>
           </div>
@@ -106,7 +106,7 @@ const BudgetPlanner = () => {
             <tbody>
               {budgets.map(b => (
                 <tr key={b.id}>
-                  <td data-label="Category" style={{ fontWeight: 700, color: '#fff' }}>{b.category}</td>
+                  <td data-label="Category" style={{ fontWeight: 700, color: 'var(--text-main)' }}>{b.category}</td>
                   <td data-label="Target">KES {b.budget.toLocaleString()}</td>
                   <td data-label="Actual" style={{ 
                     fontWeight: 700, 
