@@ -1,0 +1,4 @@
+username,password,role,active
+superadmin,password,superadmin,true
+admin,password,admin,true
+user,password,user,true
