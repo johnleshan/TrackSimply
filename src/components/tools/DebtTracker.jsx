@@ -69,14 +69,24 @@ const DebtTracker = () => {
 
     if (!error) {
       setNewDebt({ name: '', total: '', interest: '', minPayment: '' });
+      alert('Debt added successfully!');
       fetchDebts();
+    } else {
+      console.error('Error adding debt:', error);
+      alert('Failed to add debt. Check console for details.');
     }
   };
 
   const handleRemoveDebt = async (id) => {
     if (confirm('Remove this debt entry?')) {
       const { error } = await supabase.from('debts').delete().eq('id', id);
-      if (!error) fetchDebts();
+      if (!error) {
+        alert('Debt removed.');
+        fetchDebts();
+      } else {
+        console.error('Error removing debt:', error);
+        alert('Failed to remove debt.');
+      }
     }
   };
 

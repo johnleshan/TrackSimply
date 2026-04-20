@@ -68,7 +68,11 @@ const BudgetPlanner = () => {
 
     if (!error) {
       setNewBudget({ category: '', amount: '' });
+      alert('Budget category added successfully!');
       fetchBudgets();
+    } else {
+      console.error('Error adding budget:', error);
+      alert('Failed to add budget category.');
     }
   };
 
@@ -81,13 +85,24 @@ const BudgetPlanner = () => {
       .update({ actual: currentActual + parseFloat(amount) })
       .eq('id', id);
     
-    if (!error) fetchBudgets();
+    if (!error) {
+      fetchBudgets();
+    } else {
+      console.error('Error updating spend:', error);
+      alert('Failed to update spend.');
+    }
   };
 
   const handleDelete = async (id) => {
     if (confirm('Delete this budget?')) {
       const { error } = await supabase.from('budgets').delete().eq('id', id);
-      if (!error) fetchBudgets();
+      if (!error) {
+        alert('Budget deleted.');
+        fetchBudgets();
+      } else {
+        console.error('Error deleting budget:', error);
+        alert('Failed to delete budget.');
+      }
     }
   };
 

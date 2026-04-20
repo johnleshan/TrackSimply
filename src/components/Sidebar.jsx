@@ -7,9 +7,9 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse, isMo
   
   const allTools = [
     { id: 'overview', name: 'Dashboard', icon: '💎', roles: ['superadmin', 'admin', 'user'] },
-    { id: 'debt', name: 'Debt Tracker', icon: '📈', roles: ['superadmin', 'admin'] },
+    { id: 'debt', name: 'Debt Tracker', icon: '📈', roles: ['superadmin', 'admin', 'user'] },
     { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝', roles: ['superadmin', 'admin', 'user'] },
-    { id: 'budget', name: 'Budget Planner', icon: '⚖️', roles: ['superadmin', 'admin'] },
+    { id: 'budget', name: 'Budget Planner', icon: '⚖️', roles: ['superadmin', 'admin', 'user'] },
     { id: 'inventory', name: 'Inventory', icon: '📦', roles: ['superadmin', 'admin', 'user'] },
     { id: 'accounts', name: 'Account Mgmt', icon: '🛡️', roles: ['superadmin', 'admin'] }
   ];

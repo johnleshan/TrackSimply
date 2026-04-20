@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 
 const Bookkeeping = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState(['admin', 'superadmin'].includes(user?.role) ? 'business' : 'vehicles');
+  const [activeTab, setActiveTab] = useState('business');
   const [loading, setLoading] = useState(true);
 
   // Unified Cloud State
@@ -81,7 +81,11 @@ const Bookkeeping = () => {
 
     if (!error) {
       setNewTx({ date: new Date().toISOString().split('T')[0], description: '', amount: '', type: 'Income', category: 'General' });
+      alert('Transaction logged successfully!');
       fetchTransactions();
+    } else {
+      console.error('Error logging business transaction:', error);
+      alert('Failed to log transaction. Check console for details.');
     }
   };
 
@@ -102,7 +106,11 @@ const Bookkeeping = () => {
 
     if (!error) {
       setNewVehicleTx({ date: new Date().toISOString().split('T')[0], description: '', vehicleReg: '', amount: '', type: 'Expense', category: 'Fuel' });
+      alert('Vehicle event logged successfully!');
       fetchTransactions();
+    } else {
+      console.error('Error logging vehicle event:', error);
+      alert('Failed to log event. Check console for details.');
     }
   };
 
@@ -140,24 +148,23 @@ const Bookkeeping = () => {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Monitor income and expense streams for your entire operation.</p>
         </div>
         
-        {['admin', 'superadmin'].includes(user?.role) && (
-          <div style={{ display: 'flex', gap: '10px', background: 'var(--glass-card)', padding: '5px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
-            <button 
-              className={`btn ${activeTab === 'business' ? 'btn-primary' : ''}`}
-              onClick={() => setActiveTab('business')}
-              style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '8px', background: activeTab !== 'business' ? 'transparent' : '', color: activeTab !== 'business' ? 'var(--text-main)' : '' }}
-            >
-              Business
-            </button>
-            <button 
-              className={`btn ${activeTab === 'vehicles' ? 'btn-primary' : ''}`}
-              onClick={() => setActiveTab('vehicles')}
-              style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '8px', background: activeTab !== 'vehicles' ? 'transparent' : '', color: activeTab !== 'vehicles' ? 'var(--text-main)' : '' }}
-            >
-              Vehicles
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '10px', background: 'var(--glass-card)', padding: '5px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
+          <button 
+            className={`btn ${activeTab === 'business' ? 'btn-primary' : ''}`}
+            onClick={() => setActiveTab('business')}
+            style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '8px', background: activeTab !== 'business' ? 'transparent' : '', color: activeTab !== 'business' ? 'var(--text-main)' : '' }}
+          >
+            Business
+          </button>
+          <button 
+            className={`btn ${activeTab === 'vehicles' ? 'btn-primary' : ''}`}
+            onClick={() => setActiveTab('vehicles')}
+            style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '8px', background: activeTab !== 'vehicles' ? 'transparent' : '', color: activeTab !== 'vehicles' ? 'var(--text-main)' : '' }}
+          >
+            Vehicles
+          </button>
+        </div>
+
       </div>
 
       <div className="grid-cols-3" style={{ gap: '20px' }}>

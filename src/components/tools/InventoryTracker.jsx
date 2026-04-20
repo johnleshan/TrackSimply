@@ -69,7 +69,11 @@ const InventoryTracker = () => {
 
     if (!error) {
       setNewItem({ name: '', stock: '', reorder: '', price: '' });
+      alert('Inventory item added successfully!');
       fetchItems();
+    } else {
+      console.error('Error adding inventory item:', error);
+      alert('Failed to add item. Check console for details.');
     }
   };
 
@@ -80,12 +84,23 @@ const InventoryTracker = () => {
       .update({ stock: newStock })
       .eq('id', item.id);
     
-    if (!error) fetchItems();
+    if (!error) {
+      fetchItems();
+    } else {
+      console.error('Error adjusting stock:', error);
+      alert('Failed to adjust stock.');
+    }
   };
 
   const handleRemoveItem = async (id) => {
     const { error } = await supabase.from('inventory').delete().eq('id', id);
-    if (!error) fetchItems();
+    if (!error) {
+      alert('Item removed.');
+      fetchItems();
+    } else {
+      console.error('Error removing item:', error);
+      alert('Failed to remove item.');
+    }
   };
 
   return (
