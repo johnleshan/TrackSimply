@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     description TEXT,
     amount NUMERIC NOT NULL,
     type TEXT NOT NULL, -- 'income' or 'expense'
+    category TEXT,
+    source TEXT DEFAULT 'business',
+    vehicle_reg TEXT,
     date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMPTZ DEFAULT now()
 );
