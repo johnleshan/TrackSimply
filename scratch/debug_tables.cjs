@@ -16,18 +16,18 @@ const supabaseAnonKey = env['VITE_SUPABASE_ANON_KEY'];
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function debug() {
-    console.log('--- Supabase Debug ---');
+    console.log('--- Supabase Debug (Detailed) ---');
     
-    // Try to see if we can get anything from site_users
-    const { data: d1, error: e1 } = await supabase.from('site_users').select('*').limit(1);
-    console.log('site_users:', e1 ? e1.message : 'Exists (Rows: ' + d1.length + ')');
+    const tables = ['site_users', 'inventory', 'debts', 'budgets', 'transactions'];
     
-    // Check for another common table from the app
-    const { error: e2 } = await supabase.from('inventory').select('*').limit(1);
-    console.log('inventory:', e2 ? e2.message : 'Exists');
-
-    const { error: e3 } = await supabase.from('debts').select('*').limit(1);
-    console.log('debts:', e3 ? e3.message : 'Exists');
+    for (const table of tables) {
+        const { data, error } = await supabase.from(table).select('*').limit(1);
+        if (error) {
+            console.log(`✖ ${table} failed select * : ${error.message} (${error.code})`);
+        } else {
+            console.log(`✔ ${table} exists. Columns: ${data.length > 0 ? Object.keys(data[0]).join(', ') : 'Empty Table'}`);
+        }
+    }
 }
 
 debug();
