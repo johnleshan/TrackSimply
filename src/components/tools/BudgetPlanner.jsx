@@ -11,9 +11,6 @@ const BudgetPlanner = () => {
   const fetchBudgets = async () => {
     setLoading(true);
     let query = supabase.from('budgets').select('*');
-    if (!['admin', 'superadmin'].includes(user?.role)) {
-      query = query.eq('user_id', user.id);
-    }
     const { data, error } = await query.order('category', { ascending: true });
     if (!error && data) setBudgets(data);
     setLoading(false);
@@ -42,8 +39,7 @@ const BudgetPlanner = () => {
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'budgets',
-          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+          table: 'budgets'
         }, () => {
           fetchBudgets();
         })

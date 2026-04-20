@@ -11,9 +11,6 @@ const DebtTracker = () => {
   const fetchDebts = async () => {
     setLoading(true);
     let query = supabase.from('debts').select('*');
-    if (!['admin', 'superadmin'].includes(user?.role)) {
-      query = query.eq('user_id', user.id);
-    }
     const { data, error } = await query.order('created_at', { ascending: false });
     if (!error && data) setDebts(data);
     setLoading(false);
@@ -42,8 +39,7 @@ const DebtTracker = () => {
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'debts',
-          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+          table: 'debts'
         }, () => {
           fetchDebts();
         })

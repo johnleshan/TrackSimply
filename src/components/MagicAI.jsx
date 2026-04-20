@@ -50,11 +50,9 @@ const MagicAI = ({ activeTool }) => {
 
         // Snapshots for analysis
         let invQuery = supabase.from('inventory').select('name, stock, reorder');
-        if (!isAdmin) invQuery = invQuery.eq('user_id', userId);
         const { data: inventory } = await invQuery;
 
         let budQuery = supabase.from('budgets').select('budget, actual');
-        if (!isAdmin) budQuery = budQuery.eq('user_id', userId);
         const { data: budgets } = await budQuery;
 
         let insight = null;

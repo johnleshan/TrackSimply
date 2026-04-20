@@ -16,25 +16,21 @@ const DashboardOverview = ({ onSelectTool }) => {
 
         // 1. Debts
         let debtQuery = supabase.from('debts').select('total');
-        if (!isAdmin) debtQuery = debtQuery.eq('user_id', userId);
         const { data: debtData } = await debtQuery;
         const totalDebt = debtData?.reduce((sum, d) => sum + Number(d.total), 0) || 0;
 
         // 2. Bookkeeping (Profit)
         let txQuery = supabase.from('transactions').select('amount, type');
-        if (!isAdmin) txQuery = txQuery.eq('user_id', userId);
         const { data: txData } = await txQuery;
         const profit = txData?.reduce((acc, tx) => acc + (tx.type === 'Income' ? Number(tx.amount) : -Number(tx.amount)), 0) || 0;
 
         // 3. Inventory
         let invQuery = supabase.from('inventory').select('stock, reorder');
-        if (!isAdmin) invQuery = invQuery.eq('user_id', userId);
         const { data: invData } = await invQuery;
         const lowStock = invData?.filter(i => i.stock <= i.reorder).length || 0;
 
         // 4. Budgets
         let budQuery = supabase.from('budgets').select('budget, actual');
-        if (!isAdmin) budQuery = budQuery.eq('user_id', userId);
         const { data: budData } = await budQuery;
         let totalB = 0, actualB = 0;
         budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });

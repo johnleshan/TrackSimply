@@ -11,9 +11,6 @@ const InventoryTracker = () => {
   const fetchItems = async () => {
     setLoading(true);
     let query = supabase.from('inventory').select('*');
-    if (!['admin', 'superadmin'].includes(user?.role)) {
-      query = query.eq('user_id', user.id);
-    }
     const { data, error } = await query.order('name', { ascending: true });
     if (!error && data) setItems(data);
     setLoading(false);
@@ -42,8 +39,7 @@ const InventoryTracker = () => {
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'inventory',
-          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+          table: 'inventory'
         }, () => {
           fetchItems();
         })

@@ -16,9 +16,6 @@ const Bookkeeping = () => {
     setLoading(true);
     // Simple filter: Users see their own, Admins see all
     let query = supabase.from('transactions').select('*');
-    if (!['admin', 'superadmin'].includes(user?.role)) {
-      query = query.eq('user_id', user.id);
-    }
     
     const { data, error } = await query.order('date', { ascending: false });
     if (!error && data) setAllTransactions(data);
@@ -58,8 +55,7 @@ const Bookkeeping = () => {
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'transactions',
-          filter: !['admin', 'superadmin'].includes(user?.role) ? `user_id=eq.${user.id}` : undefined
+          table: 'transactions'
         }, () => {
           fetchTransactions();
         })
