@@ -161,10 +161,17 @@
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--glass-border);
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-start;
   padding: 10px 5px;
   padding-bottom: max(10px, env(safe-area-inset-bottom)); /* Support for notched phones */
   z-index: 1000;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.bottom-nav::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }
 
 @media (min-width: 768px) {
@@ -183,7 +190,8 @@
   color: var(--text-dim);
   background: none;
   border: none;
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 76px;
   transition: var(--transition);
 }
 

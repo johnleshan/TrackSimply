@@ -9,10 +9,20 @@ import InventoryTracker from './components/tools/InventoryTracker';
 import AccountManager from './components/tools/AccountManager';
 import { useAuth } from './context/AuthContext';
 
-const MobileHeader = ({ title }) => (
+const MobileHeader = ({ title, theme, toggleTheme, logout }) => (
   <header className="mobile-header">
-    <div className="brand-logo">TS</div>
-    <span className="current-view-title">{title}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="mobile-brand-logo">TS</div>
+      <span className="current-view-title">{title}</span>
+    </div>
+    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme" style={{ position: 'static' }}>
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
+      <button onClick={logout} title="Logout" style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--glass-border)', background: 'var(--danger)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        ✕
+      </button>
+    </div>
   </header>
 );
 
@@ -157,16 +167,18 @@ function App() {
 
   return (
     <div className={`dashboard-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      {isMobile && <MobileHeader title={getToolTitle()} />}
+      {isMobile && <MobileHeader title={getToolTitle()} theme={theme} toggleTheme={toggleTheme} logout={logout} />}
       
-      <div style={{ position: 'fixed', top: isMobile ? '15px' : '20px', right: isMobile ? '20px' : '20px', display: 'flex', gap: '10px', zIndex: 2000 }}>
-        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme" style={{ position: 'static' }}>
-          {theme === 'light' ? '🌙' : '☀️'}
-        </button>
-        <button onClick={logout} title="Logout" style={{ width: isMobile ? '36px' : '44px', height: isMobile ? '36px' : '44px', borderRadius: '50%', border: '1px solid var(--glass-border)', background: 'var(--danger)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          ✕
-        </button>
-      </div>
+      {!isMobile && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', display: 'flex', gap: '10px', zIndex: 2000 }}>
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme" style={{ position: 'static' }}>
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+          <button onClick={logout} title="Logout" style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--glass-border)', background: 'var(--danger)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ✕
+          </button>
+        </div>
+      )}
 
       <Sidebar 
         activeTool={activeTool} 
@@ -185,14 +197,26 @@ function App() {
         .mobile-header {
           display: flex;
           align-items: center;
-          gap: 15px;
-          padding: 15px 20px;
+          justify-content: space-between;
+          padding: 12px 16px;
           background: var(--bg-sidebar);
           backdrop-filter: blur(20px);
           border-bottom: 1px solid var(--glass-border);
           position: sticky;
           top: 0;
           z-index: 1000;
+        }
+        .mobile-brand-logo {
+          background: linear-gradient(135deg, var(--accent-teal), #06b7d2);
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          color: #0f172a;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.9rem;
         }
         .current-view-title {
           font-weight: 700;
