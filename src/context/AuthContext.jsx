@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
+
+const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -12,6 +14,23 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [loading, setLoading] = useState(true);
+  const logoutTimerRef = useRef(null);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('tracksimply_session');
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+  }, []);
+
+  const resetLogoutTimer = useCallback(() => {
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    if (user) {
+      logoutTimerRef.current = setTimeout(() => {
+        console.log('Inactivity logout triggered');
+        logout();
+      }, INACTIVITY_LIMIT);
+    }
+  }, [user, logout]);
 
   // Migration and Initialization
   useEffect(() => {
@@ -53,6 +72,22 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Inactivity Listeners
+  useEffect(() => {
+    if (user) {
+      const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+      const handleActivity = () => resetLogoutTimer();
+
+      events.forEach(event => window.addEventListener(event, handleActivity));
+      resetLogoutTimer();
+
+      return () => {
+        events.forEach(event => window.removeEventListener(event, handleActivity));
+        if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+      };
+    }
+  }, [user, resetLogoutTimer]);
+
   // Sync session to LocalStorage (for fast initial load)
   useEffect(() => {
     if (user) {
@@ -90,13 +125,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-  };
-
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
+

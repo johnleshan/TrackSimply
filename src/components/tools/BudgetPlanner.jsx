@@ -190,7 +190,9 @@ const BudgetPlanner = () => {
                   <td data-label="Actions">
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button onClick={() => handleAddSpend(b.id, Number(b.actual))} className="btn-action">+ Spend</button>
-                      <button onClick={() => handleDelete(b.id)} className="btn-action danger">Delete</button>
+                      {['admin', 'superadmin'].includes(user?.role) && (
+                        <button onClick={() => handleDelete(b.id)} className="btn-action danger">Delete</button>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -6,6 +6,7 @@ import DebtTracker from './components/tools/DebtTracker';
 import Bookkeeping from './components/tools/Bookkeeping';
 import BudgetPlanner from './components/tools/BudgetPlanner';
 import InventoryTracker from './components/tools/InventoryTracker';
+import VehicleManagement from './components/tools/VehicleManagement';
 import AccountManager from './components/tools/AccountManager';
 import { useAuth } from './context/AuthContext';
 
@@ -26,7 +27,7 @@ const MobileHeader = ({ title, theme, toggleTheme, logout }) => (
   </header>
 );
 
-const LoginScreen = () => {
+const LoginScreen = ({ theme, toggleTheme }) => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +47,16 @@ const LoginScreen = () => {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '30px', background: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '30px', background: 'var(--bg-primary)', position: 'relative' }}>
+      <button 
+        className="theme-toggle" 
+        onClick={toggleTheme} 
+        aria-label="Toggle Theme" 
+        style={{ position: 'absolute', top: '20px', right: '20px' }}
+      >
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
+      
       <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
         <h1 style={{ fontSize: '2.5rem', color: 'var(--accent-teal)', textAlign: 'center', marginBottom: '10px' }}>TrackSimply</h1>
         <p style={{ color: 'var(--text-dim)', textAlign: 'center', marginBottom: '30px' }}>Please sign in to continue</p>
@@ -140,6 +150,7 @@ function App() {
       bookkeeping: 'Bookkeeping', 
       budget: 'Budget Planner', 
       inventory: 'Inventory',
+      vehicles: 'Fleet Registry',
       accounts: 'Account Management'
     };
     return titles[activeTool] || 'TrackSimply';
@@ -152,6 +163,7 @@ function App() {
       case 'bookkeeping': return <Bookkeeping />;
       case 'budget': return <BudgetPlanner />;
       case 'inventory': return <InventoryTracker />;
+      case 'vehicles': return <VehicleManagement />;
       case 'accounts': return <AccountManager />;
       default: return <DashboardOverview onSelectTool={setActiveTool} />;
     }
@@ -162,7 +174,7 @@ function App() {
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return <LoginScreen theme={theme} toggleTheme={toggleTheme} />;
   }
 
   return (

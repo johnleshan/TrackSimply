@@ -158,12 +158,14 @@ const DebtTracker = () => {
                   <td data-label="Interest">{debt.interest}%</td>
                   <td data-label="Payment">KES {Number(debt.min_payment).toLocaleString()}</td>
                   <td data-label="Action">
-                    <button 
-                      onClick={() => handleRemoveDebt(debt.id)}
-                      className="btn-action danger"
-                    >
-                      REMOVE
-                    </button>
+                    {['admin', 'superadmin'].includes(user?.role) && (
+                      <button 
+                        onClick={() => handleRemoveDebt(debt.id)}
+                        className="btn-action danger"
+                      >
+                        REMOVE
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

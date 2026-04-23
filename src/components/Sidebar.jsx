@@ -11,6 +11,7 @@ const Sidebar = ({ activeTool, onSelectTool, isCollapsed, onToggleCollapse, isMo
     { id: 'bookkeeping', name: 'Bookkeeping', icon: '📝', roles: ['superadmin', 'admin', 'user'] },
     { id: 'budget', name: 'Budget Planner', icon: '⚖️', roles: ['superadmin', 'admin', 'user'] },
     { id: 'inventory', name: 'Inventory', icon: '📦', roles: ['superadmin', 'admin', 'user'] },
+    { id: 'vehicles', name: 'Fleet Registry', icon: '🚛', roles: ['superadmin', 'admin', 'user'] },
     { id: 'accounts', name: 'Account Mgmt', icon: '🛡️', roles: ['superadmin', 'admin'] }
   ];
 

@@ -64,6 +64,19 @@ const InventoryTracker = () => {
     }]);
 
     if (!error) {
+      // Log as business transaction
+      if (parseInt(newItem.stock) > 0) {
+        await supabase.from('transactions').insert([{
+          user_id: user.id,
+          date: new Date().toISOString().split('T')[0],
+          description: `Initial Stock: ${newItem.name}`,
+          amount: parseFloat(newItem.price) * parseInt(newItem.stock),
+          type: 'Expense',
+          category: 'Stock/Inventory',
+          source: 'business'
+        }]);
+      }
+      
       setNewItem({ name: '', stock: '', reorder: '', price: '' });
       alert('Inventory item added successfully!');
       fetchItems();
@@ -74,22 +87,37 @@ const InventoryTracker = () => {
   };
 
   const handleStockAdj = async (item, delta) => {
-    const newStock = Math.max(0, item.stock + delta);
+    const currentStock = Number(item.stock) || 0;
+    const newStock = Math.max(0, currentStock + delta);
+    
     const { error } = await supabase
       .from('inventory')
       .update({ stock: newStock })
-      .eq('id', item.id);
+      .eq('name', item.name);
     
     if (!error) {
+      // Log transaction
+      const price = Number(item.price) || 0;
+      await supabase.from('transactions').insert([{
+        user_id: user.id,
+        date: new Date().toISOString().split('T')[0],
+        description: `Stock Adj: ${item.name} (${delta > 0 ? '+' : ''}${delta})`,
+        amount: Math.abs(delta) * price,
+        type: delta > 0 ? 'Expense' : 'Income',
+        category: 'Stock/Inventory',
+        source: 'business'
+      }]);
+      
       fetchItems();
     } else {
       console.error('Error adjusting stock:', error);
-      alert('Failed to adjust stock.');
+      alert('Failed to update stock. Check permissions.');
     }
   };
 
-  const handleRemoveItem = async (id) => {
-    const { error } = await supabase.from('inventory').delete().eq('id', id);
+
+  const handleRemoveItem = async (itemName) => {
+    const { error } = await supabase.from('inventory').delete().eq('name', itemName);
     if (!error) {
       alert('Item removed.');
       fetchItems();
@@ -161,7 +189,9 @@ const InventoryTracker = () => {
                     </div>
                   </td>
                   <td data-label="Actions">
-                    <button onClick={() => handleRemoveItem(item.id)} className="btn-action danger">Remove</button>
+                    {['admin', 'superadmin'].includes(user?.role) && (
+                      <button onClick={() => handleRemoveItem(item.name)} className="btn-action danger">Remove</button>
+                    )}
                   </td>
                 </tr>
               ))}

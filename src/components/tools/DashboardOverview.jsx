@@ -5,53 +5,81 @@ import { supabase } from '../../lib/supabase';
 const DashboardOverview = ({ onSelectTool }) => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ totalDebt: 0, netProfit: 0, lowStock: 0, budgetUtil: 0 });
+  const [performance, setPerformance] = useState({ topItem: 'N/A', underItem: 'N/A', income: 0, expense: 0 });
   const [loading, setLoading] = useState(true);
+  
+  // Default to current week
+  const getWeekRange = () => {
+    const now = new Date();
+    const first = now.getDate() - now.getDay();
+    const last = first + 6;
+    return {
+      start: new Date(now.setDate(first)).toISOString().split('T')[0],
+      end: new Date(now.setDate(last)).toISOString().split('T')[0]
+    };
+  };
+
+  const [dateRange, setDateRange] = useState(getWeekRange());
+
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      // 1. Debts
+      const { data: debtData } = await supabase.from('debts').select('total');
+      const totalDebt = debtData?.reduce((sum, d) => sum + Number(d.total), 0) || 0;
+
+      // 2. Bookkeeping (Profit) - Filtered by Date Range
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('amount, type, description, date')
+        .gte('date', dateRange.start)
+        .lte('date', dateRange.end);
+
+      let income = 0, expense = 0;
+      const itemPerformance = {};
+
+      txData?.forEach(tx => {
+        const amt = Number(tx.amount);
+        if (tx.type === 'Income') {
+          income += amt;
+          itemPerformance[tx.description] = (itemPerformance[tx.description] || 0) + amt;
+        } else {
+          expense += amt;
+        }
+      });
+
+      const sortedItems = Object.entries(itemPerformance).sort((a, b) => b[1] - a[1]);
+      const topItem = sortedItems.length > 0 ? `${sortedItems[0][0]} (KES ${sortedItems[0][1].toLocaleString()})` : 'N/A';
+      const underItem = sortedItems.length > 1 ? `${sortedItems[sortedItems.length - 1][0]} (KES ${sortedItems[sortedItems.length - 1][1].toLocaleString()})` : 'N/A';
+
+      // 3. Inventory
+      const { data: invData } = await supabase.from('inventory').select('stock, reorder');
+      const lowStock = invData?.filter(i => i.stock <= i.reorder).length || 0;
+
+      // 4. Budgets
+      const { data: budData } = await supabase.from('budgets').select('budget, actual');
+      let totalB = 0, actualB = 0;
+      budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });
+      
+      setStats({ 
+        totalDebt, 
+        netProfit: income - expense, 
+        lowStock, 
+        budgetUtil: totalB > 0 ? (actualB / totalB) * 100 : 0 
+      });
+
+      setPerformance({ topItem, underItem, income, expense });
+    } catch (err) {
+      console.error('Stats Fetch Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        const userId = user?.id;
-        const isAdmin = ['admin', 'superadmin'].includes(user?.role);
-
-        // 1. Debts
-        let debtQuery = supabase.from('debts').select('total');
-        const { data: debtData } = await debtQuery;
-        const totalDebt = debtData?.reduce((sum, d) => sum + Number(d.total), 0) || 0;
-
-        // 2. Bookkeeping (Profit)
-        let txQuery = supabase.from('transactions').select('amount, type');
-        const { data: txData } = await txQuery;
-        const profit = txData?.reduce((acc, tx) => acc + (tx.type === 'Income' ? Number(tx.amount) : -Number(tx.amount)), 0) || 0;
-
-        // 3. Inventory
-        let invQuery = supabase.from('inventory').select('stock, reorder');
-        const { data: invData } = await invQuery;
-        const lowStock = invData?.filter(i => i.stock <= i.reorder).length || 0;
-
-        // 4. Budgets
-        let budQuery = supabase.from('budgets').select('budget, actual');
-        const { data: budData } = await budQuery;
-        let totalB = 0, actualB = 0;
-        budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });
-        
-        setStats({ 
-          totalDebt, 
-          netProfit: profit, 
-          lowStock, 
-          budgetUtil: totalB > 0 ? (actualB / totalB) * 100 : 0 
-        });
-      } catch (err) {
-        console.error('Stats Fetch Error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (user) {
       fetchStats();
 
-      // Real-time synchronization for all dashboard stats
       const channel = supabase
         .channel('dashboard-realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'debts' }, () => fetchStats())
@@ -64,7 +92,7 @@ const DashboardOverview = ({ onSelectTool }) => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [user, dateRange]);
 
   const features = [
     { id: 'ai', icon: '✨', title: 'AI Assistant', desc: 'Speak naturally to manage your entire app. Proactive alerts and smart financial logic.' },
@@ -76,13 +104,56 @@ const DashboardOverview = ({ onSelectTool }) => {
 
   return (
     <div className="tool-view">
+      {/* Date Range Selector */}
+      <div className="card" style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', alignItems: 'center', padding: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD START</label>
+          <input 
+            type="date" 
+            value={dateRange.start} 
+            onChange={e => setDateRange({...dateRange, start: e.target.value})}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD END</label>
+          <input 
+            type="date" 
+            value={dateRange.end} 
+            onChange={e => setDateRange({...dateRange, end: e.target.value})}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
+          />
+        </div>
+      </div>
+
       {/* Hero Section */}
-      <div style={{ textAlign: 'center', padding: '20px 0 10px' }}>
-        <p style={{ color: 'var(--accent-teal)', fontWeight: 700, letterSpacing: '2px', marginBottom: '12px', fontSize: '0.8rem' }}>ONE TOOL. CLOUD SYNCED.</p>
-        <h1 style={{ fontSize: 'clamp(2rem, 7vw, 4.5rem)', marginBottom: '15px' }}>TrackSimply</h1>
-        <p style={{ color: 'var(--text-dim)', maxWidth: '700px', margin: '0 auto', fontSize: 'clamp(0.9rem, 2.5vw, 1.15rem)', lineHeight: 1.6 }}>
-          The ultimate personal dashboard for debts, bookkeeping, budgets, and inventory. Now with real-time cloud persistence for all your devices.
-        </p>
+      <div style={{ textAlign: 'center', padding: '10px 0' }}>
+        <p style={{ color: 'var(--accent-teal)', fontWeight: 700, letterSpacing: '2px', marginBottom: '12px', fontSize: '0.8rem' }}>BUSINESS PERFORMANCE</p>
+        <div className="grid-cols-3" style={{ gap: '20px', marginBottom: '30px' }}>
+          <div className="card" style={{ borderLeft: '4px solid var(--success)' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD INCOME</p>
+            <h3 style={{ color: 'var(--success)', marginTop: '5px' }}>KES {performance.income.toLocaleString()}</h3>
+          </div>
+          <div className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD EXPENSES</p>
+            <h3 style={{ color: 'var(--danger)', marginTop: '5px' }}>KES {performance.expense.toLocaleString()}</h3>
+          </div>
+          <div className="card" style={{ borderLeft: '4px solid var(--accent-teal)' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD PROFIT</p>
+            <h3 style={{ color: 'var(--accent-teal)', marginTop: '5px' }}>KES {stats.netProfit.toLocaleString()}</h3>
+          </div>
+        </div>
+
+        <div className="grid-cols-2" style={{ gap: '20px', marginBottom: '20px' }}>
+          <div className="card" style={{ background: 'var(--accent-teal-soft)', textAlign: 'left' }}>
+            <p style={{ color: 'var(--accent-teal)', fontWeight: 700, fontSize: '0.75rem', marginBottom: '5px' }}>🌟 TOP PERFORMING ITEM</p>
+            <h4 style={{ color: 'var(--text-main)' }}>{performance.topItem}</h4>
+          </div>
+          <div className="card" style={{ background: 'rgba(239, 68, 68, 0.05)', textAlign: 'left' }}>
+            <p style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.75rem', marginBottom: '5px' }}>⚠️ UNDERPERFORMING ITEM</p>
+            <h4 style={{ color: 'var(--text-main)' }}>{performance.underItem}</h4>
+          </div>
+        </div>
       </div>
 
       {/* Feature Cards Grid */}
