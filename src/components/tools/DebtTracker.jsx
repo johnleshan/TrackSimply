@@ -10,7 +10,7 @@ const DebtTracker = () => {
 
   const fetchDebts = async () => {
     setLoading(true);
-    let query = supabase.from('debts').select('*');
+    let query = supabase.from('debts').select('*').eq('user_id', user.id);
     const { data, error } = await query.order('created_at', { ascending: false });
     if (!error && data) setDebts(data);
     setLoading(false);
@@ -18,7 +18,7 @@ const DebtTracker = () => {
 
   useEffect(() => {
     const initData = async () => {
-      const { data: remoteCount } = await supabase.from('debts').select('id', { count: 'exact', head: true });
+      const { data: remoteCount } = await supabase.from('debts').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
       if (remoteCount === 0) {
         const local = JSON.parse(localStorage.getItem('tracksimply_debts') || '[]');
         if (local.length > 0) {
@@ -75,7 +75,7 @@ const DebtTracker = () => {
 
   const handleRemoveDebt = async (id) => {
     if (confirm('Remove this debt entry?')) {
-      const { error } = await supabase.from('debts').delete().eq('id', id);
+      const { error } = await supabase.from('debts').delete().eq('id', id).eq('user_id', user.id);
       if (!error) {
         alert('Debt removed.');
         fetchDebts();

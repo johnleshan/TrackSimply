@@ -14,6 +14,7 @@ const VehicleManagement = () => {
     const { data, error } = await supabase
       .from('vehicles')
       .select('*')
+      .eq('user_id', user.id)
       .order('reg_no', { ascending: true });
     
     if (!error && data) setVehicles(data);
@@ -41,7 +42,7 @@ const VehicleManagement = () => {
       fetchVehicles();
     } else {
       console.error('Error adding vehicle:', error);
-      alert('Failed to add vehicle. Note: Ensure the "vehicles" table exists in your Supabase database.');
+      alert(`Failed to add vehicle: ${error.message || 'Unknown error'}`);
     }
   };
 

@@ -18,7 +18,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 async function debug() {
     console.log('--- Supabase Debug (Detailed) ---');
     
-    const tables = ['site_users', 'inventory', 'debts', 'budgets', 'transactions'];
+    const tables = ['site_users', 'inventory', 'debts', 'budgets', 'transactions', 'vehicles'];
     
     for (const table of tables) {
         const { data, error } = await supabase.from(table).select('*').limit(1);

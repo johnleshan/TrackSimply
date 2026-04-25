@@ -10,15 +10,15 @@ const InventoryTracker = () => {
 
   const fetchItems = async () => {
     setLoading(true);
-    let query = supabase.from('inventory').select('*');
-    const { data, error } = await query.order('name', { ascending: true });
+    let query = supabase.from('inventory').select('*').eq('user_id', user.id);
+    const { data, error } = await query.order('price', { ascending: false });
     if (!error && data) setItems(data);
     setLoading(false);
   };
 
   useEffect(() => {
     const initData = async () => {
-      const { data: remoteCount } = await supabase.from('inventory').select('id', { count: 'exact', head: true });
+      const { data: remoteCount } = await supabase.from('inventory').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
       if (remoteCount === 0) {
         const local = JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]');
         if (local.length > 0) {
@@ -93,7 +93,8 @@ const InventoryTracker = () => {
     const { error } = await supabase
       .from('inventory')
       .update({ stock: newStock })
-      .eq('name', item.name);
+      .eq('name', item.name)
+      .eq('user_id', user.id);
     
     if (!error) {
       // Log transaction
@@ -117,7 +118,7 @@ const InventoryTracker = () => {
 
 
   const handleRemoveItem = async (itemName) => {
-    const { error } = await supabase.from('inventory').delete().eq('name', itemName);
+    const { error } = await supabase.from('inventory').delete().eq('name', itemName).eq('user_id', user.id);
     if (!error) {
       alert('Item removed.');
       fetchItems();

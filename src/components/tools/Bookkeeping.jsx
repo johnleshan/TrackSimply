@@ -33,9 +33,9 @@ const Bookkeeping = () => {
 
   const fetchTransactions = async () => {
     setLoading(true);
-    const { data: txs, error: txError } = await supabase.from('transactions').select('*').order('date', { ascending: false });
-    const { data: vehs, error: vehError } = await supabase.from('vehicles').select('*').order('reg_no', { ascending: true });
-    const { data: inv, error: invError } = await supabase.from('inventory').select('*').order('name', { ascending: true });
+    const { data: txs, error: txError } = await supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false });
+    const { data: vehs, error: vehError } = await supabase.from('vehicles').select('*').eq('user_id', user.id).order('reg_no', { ascending: true });
+    const { data: inv, error: invError } = await supabase.from('inventory').select('*').eq('user_id', user.id).order('name', { ascending: true });
     
     if (!txError && txs) setAllTransactions(txs);
     if (!vehError && vehs) setVehicles(vehs);
@@ -49,7 +49,7 @@ const Bookkeeping = () => {
       const localBus = JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]');
       const localVeh = JSON.parse(localStorage.getItem('tracksimply_vehicle_transactions') || '[]');
       
-      const { data: remoteCount } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
+      const { data: remoteCount } = await supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
       
       if (remoteCount === 0 && (localBus.length > 0 || localVeh.length > 0)) {
         console.log('Migrating local transactions to cloud...');
@@ -198,15 +198,17 @@ const Bookkeeping = () => {
 
   const busTotals = businessTxs.reduce((acc, tx) => {
     const amt = Number(tx.amount || 0);
-    if (tx.type === 'Income') acc.income += amt;
-    else acc.expense += amt;
+    const type = tx.type?.toLowerCase();
+    if (type === 'income') acc.income += amt;
+    else if (type === 'expense') acc.expense += amt;
     return acc;
   }, { income: 0, expense: 0 });
 
   const vehTotals = vehicleTxs.reduce((acc, tx) => {
     const amt = Number(tx.amount || 0);
-    if (tx.type === 'Income') acc.income += amt;
-    else acc.expense += amt;
+    const type = tx.type?.toLowerCase();
+    if (type === 'income') acc.income += amt;
+    else if (type === 'expense') acc.expense += amt;
     return acc;
   }, { income: 0, expense: 0 });
 
@@ -216,7 +218,7 @@ const Bookkeeping = () => {
 
   // Performance metrics for period
   const itemPerformance = businessTxs.reduce((acc, tx) => {
-    if (tx.type === 'Income') {
+    if (tx.type?.toLowerCase() === 'income') {
       const desc = tx.description.split(' (x')[0]; // Strip quantity for grouping
       acc[desc] = (acc[desc] || 0) + Number(tx.amount);
     }
@@ -229,7 +231,8 @@ const Bookkeeping = () => {
   // Grouping logic for Business Activity
   const groupedTxs = businessTxs.reduce((acc, tx) => {
     const date = tx.date;
-    const type = (tx.type === 'Income' || tx.type === 'Expense') ? tx.type : 'Expense'; // Fallback
+    const dbType = tx.type?.toLowerCase();
+    const type = (dbType === 'income') ? 'Income' : 'Expense'; // Normalize for UI grouping
     
     if (!acc[date]) acc[date] = { Income: [], Expense: [], incomeTotal: 0, expenseTotal: 0 };
     acc[date][type].push(tx);
@@ -248,8 +251,9 @@ const Bookkeeping = () => {
     const reg = tx.vehicle_reg || 'Unknown';
     if (!acc[reg]) acc[reg] = { income: 0, expense: 0, transactions: [] };
     const amt = Number(tx.amount || 0);
-    if (tx.type === 'Income') acc[reg].income += amt;
-    else acc[reg].expense += amt;
+    const type = tx.type?.toLowerCase();
+    if (type === 'income') acc[reg].income += amt;
+    else if (type === 'expense') acc[reg].expense += amt;
     acc[reg].transactions.push(tx);
     return acc;
   }, {});
@@ -422,7 +426,7 @@ const Bookkeeping = () => {
                             <div className="table-container" style={{ marginTop: '5px' }}>
                               <table>
                                 <tbody>
-                                  {groupedTxs[date].Income.map(tx => (
+                                  {groupedTxs[date].Income.sort((a, b) => Number(b.amount) - Number(a.amount)).map(tx => (
                                     <tr key={tx.id}>
                                       <td>{tx.description}</td>
                                       <td>{tx.category}</td>
@@ -453,7 +457,7 @@ const Bookkeeping = () => {
                             <div className="table-container" style={{ marginTop: '5px' }}>
                               <table>
                                 <tbody>
-                                  {groupedTxs[date].Expense.map(tx => (
+                                  {groupedTxs[date].Expense.sort((a, b) => Number(b.amount) - Number(a.amount)).map(tx => (
                                     <tr key={tx.id}>
                                       <td>{tx.description}</td>
                                       <td>{tx.category}</td>

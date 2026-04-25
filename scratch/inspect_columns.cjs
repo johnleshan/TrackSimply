@@ -21,7 +21,8 @@ async function inspect() {
         inventory: ['name', 'stock', 'reorder', 'price', 'user_id'],
         debts: ['name', 'total', 'interest', 'min_payment', 'user_id'],
         budgets: ['category', 'budget', 'actual', 'user_id'],
-        transactions: ['description', 'amount', 'type', 'date', 'category', 'source', 'vehicle_reg', 'user_id']
+        transactions: ['description', 'amount', 'type', 'date', 'category', 'source', 'vehicle_reg', 'user_id'],
+        vehicles: ['reg_no', 'description']
     };
 
     for (const [table, columns] of Object.entries(tables)) {

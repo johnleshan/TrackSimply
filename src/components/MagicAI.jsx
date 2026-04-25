@@ -49,10 +49,10 @@ const MagicAI = ({ activeTool }) => {
         const isAdmin = ['admin', 'superadmin'].includes(user?.role);
 
         // Snapshots for analysis
-        let invQuery = supabase.from('inventory').select('name, stock, reorder');
+        let invQuery = supabase.from('inventory').select('name, stock, reorder').eq('user_id', user.id);
         const { data: inventory } = await invQuery;
 
-        let budQuery = supabase.from('budgets').select('budget, actual');
+        let budQuery = supabase.from('budgets').select('budget, actual').eq('user_id', user.id);
         const { data: budgets } = await budQuery;
 
         let insight = null;
@@ -94,7 +94,7 @@ const MagicAI = ({ activeTool }) => {
     setInput('');
     setIsThinking(true);
 
-    const response = await chatWithAI([...messages, userMessage]);
+    const response = await chatWithAI([...messages, userMessage], user.id);
     setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     setIsThinking(false);
   };

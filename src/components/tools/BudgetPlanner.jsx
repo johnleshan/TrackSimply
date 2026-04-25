@@ -10,7 +10,7 @@ const BudgetPlanner = () => {
 
   const fetchBudgets = async () => {
     setLoading(true);
-    let query = supabase.from('budgets').select('*');
+    let query = supabase.from('budgets').select('*').eq('user_id', user.id);
     const { data, error } = await query.order('category', { ascending: true });
     if (!error && data) setBudgets(data);
     setLoading(false);
@@ -18,7 +18,7 @@ const BudgetPlanner = () => {
 
   useEffect(() => {
     const initData = async () => {
-      const { data: remoteCount } = await supabase.from('budgets').select('id', { count: 'exact', head: true });
+      const { data: remoteCount } = await supabase.from('budgets').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
       if (remoteCount === 0) {
         const local = JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]');
         if (local.length > 0) {
@@ -79,7 +79,8 @@ const BudgetPlanner = () => {
     const { error } = await supabase
       .from('budgets')
       .update({ actual: currentActual + parseFloat(amount) })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
     
     if (!error) {
       fetchBudgets();
@@ -91,7 +92,7 @@ const BudgetPlanner = () => {
 
   const handleDelete = async (id) => {
     if (confirm('Delete this budget?')) {
-      const { error } = await supabase.from('budgets').delete().eq('id', id);
+      const { error } = await supabase.from('budgets').delete().eq('id', id).eq('user_id', user.id);
       if (!error) {
         alert('Budget deleted.');
         fetchBudgets();

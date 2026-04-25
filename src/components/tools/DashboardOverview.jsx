@@ -25,13 +25,14 @@ const DashboardOverview = ({ onSelectTool }) => {
     setLoading(true);
     try {
       // 1. Debts
-      const { data: debtData } = await supabase.from('debts').select('total');
+      const { data: debtData } = await supabase.from('debts').select('total').eq('user_id', user.id);
       const totalDebt = debtData?.reduce((sum, d) => sum + Number(d.total), 0) || 0;
 
       // 2. Bookkeeping (Profit) - Filtered by Date Range
       const { data: txData } = await supabase
         .from('transactions')
         .select('amount, type, description, date')
+        .eq('user_id', user.id)
         .gte('date', dateRange.start)
         .lte('date', dateRange.end);
 
@@ -40,10 +41,11 @@ const DashboardOverview = ({ onSelectTool }) => {
 
       txData?.forEach(tx => {
         const amt = Number(tx.amount);
-        if (tx.type === 'Income') {
+        const type = tx.type?.toLowerCase();
+        if (type === 'income') {
           income += amt;
           itemPerformance[tx.description] = (itemPerformance[tx.description] || 0) + amt;
-        } else {
+        } else if (type === 'expense') {
           expense += amt;
         }
       });
@@ -53,11 +55,11 @@ const DashboardOverview = ({ onSelectTool }) => {
       const underItem = sortedItems.length > 1 ? `${sortedItems[sortedItems.length - 1][0]} (KES ${sortedItems[sortedItems.length - 1][1].toLocaleString()})` : 'N/A';
 
       // 3. Inventory
-      const { data: invData } = await supabase.from('inventory').select('stock, reorder');
+      const { data: invData } = await supabase.from('inventory').select('stock, reorder').eq('user_id', user.id);
       const lowStock = invData?.filter(i => i.stock <= i.reorder).length || 0;
 
       // 4. Budgets
-      const { data: budData } = await supabase.from('budgets').select('budget, actual');
+      const { data: budData } = await supabase.from('budgets').select('budget, actual').eq('user_id', user.id);
       let totalB = 0, actualB = 0;
       budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });
       

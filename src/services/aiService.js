@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase';
 const GROQ_API_KEY = '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';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -82,51 +83,67 @@ const tools = [
 ];
 
 const toolExecutors = {
-  get_financial_data: () => {
-    return JSON.stringify({
-      debts: JSON.parse(localStorage.getItem('tracksimply_debts') || '[]'),
-      transactions: JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]'),
-      budgets: JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]'),
-      inventory: JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]')
-    });
+  get_financial_data: async (args, userId) => {
+    const { data: debts } = await supabase.from('debts').select('*').eq('user_id', userId);
+    const { data: txs } = await supabase.from('transactions').select('*').eq('user_id', userId);
+    const { data: budgets } = await supabase.from('budgets').select('*').eq('user_id', userId);
+    const { data: inventory } = await supabase.from('inventory').select('*').eq('user_id', userId);
+    
+    return JSON.stringify({ debts, transactions: txs, budgets, inventory });
   },
-  add_debt: (args) => {
-    const debts = JSON.parse(localStorage.getItem('tracksimply_debts') || '[]');
-    debts.push({ id: Date.now(), ...args });
-    localStorage.setItem('tracksimply_debts', JSON.stringify(debts));
+  add_debt: async (args, userId) => {
+    const { error } = await supabase.from('debts').insert([{ ...args, user_id: userId }]);
+    if (error) throw error;
     notifySync();
     return `Successfully added debt: ${args.name}`;
   },
-  add_transaction: (args) => {
-    const txs = JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]');
-    txs.push({ id: Date.now(), date: new Date().toISOString().split('T')[0], ...args });
-    localStorage.setItem('tracksimply_transactions', JSON.stringify(txs));
+  add_transaction: async (args, userId) => {
+    const { error } = await supabase.from('transactions').insert([{ 
+      ...args, 
+      user_id: userId, 
+      date: new Date().toISOString().split('T')[0],
+      source: 'business'
+    }]);
+    if (error) throw error;
     notifySync();
     return `Successfully logged ${args.type}: ${args.description}`;
   },
-  set_budget: (args) => {
-    const budgets = JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]');
-    const idx = budgets.findIndex(b => b.category.toLowerCase() === args.category.toLowerCase());
-    if (idx >= 0) budgets[idx].budget = args.amount;
-    else budgets.push({ id: Date.now(), category: args.category, budget: args.amount, actual: 0 });
-    localStorage.setItem('tracksimply_budgets', JSON.stringify(budgets));
+  set_budget: async (args, userId) => {
+    // Check if exists
+    const { data: existing } = await supabase
+      .from('budgets')
+      .select('id')
+      .eq('category', args.category)
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      await supabase.from('budgets').update({ budget: args.amount }).eq('id', existing.id);
+    } else {
+      await supabase.from('budgets').insert([{ category: args.category, budget: args.amount, actual: 0, user_id: userId }]);
+    }
     notifySync();
     return `Successfully set budget for ${args.category}: ${args.amount}`;
   },
-  update_inventory: (args) => {
-    const inv = JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]');
-    const idx = inv.findIndex(i => i.name.toLowerCase() === args.name.toLowerCase());
-    if (idx >= 0) {
-      inv[idx].stock = Math.max(0, inv[idx].stock + args.delta);
-      localStorage.setItem('tracksimply_inventory', JSON.stringify(inv));
+  update_inventory: async (args, userId) => {
+    const { data: item } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('name', args.name)
+      .eq('user_id', userId)
+      .single();
+
+    if (item) {
+      const newStock = Math.max(0, (Number(item.stock) || 0) + args.delta);
+      await supabase.from('inventory').update({ stock: newStock }).eq('id', item.id);
       notifySync();
-      return `Successfully updated ${args.name} stock to ${inv[idx].stock}`;
+      return `Successfully updated ${args.name} stock to ${newStock}`;
     }
     return `Could not find item ${args.name} in inventory.`;
   }
 };
 
-export const chatWithAI = async (messages) => {
+export const chatWithAI = async (messages, userId) => {
   try {
     const response = await fetch(GROQ_URL, {
       method: 'POST',
@@ -150,7 +167,7 @@ export const chatWithAI = async (messages) => {
       for (const call of message.tool_calls) {
         const executor = toolExecutors[call.function.name];
         if (executor) {
-          const result = executor(JSON.parse(call.function.arguments));
+          const result = await executor(JSON.parse(call.function.arguments), userId);
           toolResults.push({
             role: "tool",
             tool_call_id: call.id,
