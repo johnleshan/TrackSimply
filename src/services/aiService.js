@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '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';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Helper to sync all UI components after AI modification
@@ -197,6 +197,6 @@ export const chatWithAI = async (messages, userId) => {
     return message.content;
   } catch (error) {
     console.error('Groq AI Error:', error);
-    return "I'm having trouble connecting to my central brain. Please check your internet connection.";
+    return `I'm having trouble connecting to my central brain. Error: ${error.message}. Please verify your API key in .env (VITE_GROQ_API_KEY).`;
   }
 };
