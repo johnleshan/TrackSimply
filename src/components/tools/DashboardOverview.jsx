@@ -138,14 +138,28 @@ const DashboardOverview = ({ onSelectTool }) => {
           <button 
             className="btn" 
             onClick={() => setDateRange({ start: '1970-01-01', end: '2099-12-31' })}
-            style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)' }}
+            style={{ 
+              padding: '8px 15px', 
+              fontSize: '0.75rem', 
+              background: dateRange.start === '1970-01-01' ? 'var(--accent-teal-soft)' : 'rgba(255,255,255,0.05)', 
+              color: 'var(--accent-teal)', 
+              border: '1px solid var(--accent-teal)',
+              fontWeight: 700
+            }}
           >
             SHOW ALL TIME
           </button>
           <button 
             className="btn" 
             onClick={() => setDateRange(getWeekRange())}
-            style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-dim)', border: '1px solid var(--glass-border)' }}
+            style={{ 
+              padding: '8px 15px', 
+              fontSize: '0.75rem', 
+              background: dateRange.start !== '1970-01-01' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: 'var(--text-dim)', 
+              border: '1px solid var(--glass-border)',
+              fontWeight: 700
+            }}
           >
             RESET TO WEEK
           </button>
@@ -156,17 +170,23 @@ const DashboardOverview = ({ onSelectTool }) => {
       <div style={{ textAlign: 'center', padding: '10px 0' }}>
         <p style={{ color: 'var(--accent-teal)', fontWeight: 700, letterSpacing: '2px', marginBottom: '12px', fontSize: '0.8rem' }}>BUSINESS PERFORMANCE</p>
         <div className="grid-cols-3" style={{ gap: '20px', marginBottom: '30px' }}>
-          <div className="card" style={{ borderLeft: '4px solid var(--success)' }}>
+          <div className="card" style={{ borderLeft: '4px solid var(--success)', opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD INCOME</p>
-            <h3 style={{ color: 'var(--success)', marginTop: '5px' }}>KES {performance.income.toLocaleString()}</h3>
+            <h3 style={{ color: 'var(--success)', marginTop: '5px' }}>
+              {loading ? '...' : `KES ${performance.income.toLocaleString()}`}
+            </h3>
           </div>
-          <div className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
+          <div className="card" style={{ borderLeft: '4px solid var(--danger)', opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD EXPENSES</p>
-            <h3 style={{ color: 'var(--danger)', marginTop: '5px' }}>KES {performance.expense.toLocaleString()}</h3>
+            <h3 style={{ color: 'var(--danger)', marginTop: '5px' }}>
+              {loading ? '...' : `KES ${performance.expense.toLocaleString()}`}
+            </h3>
           </div>
-          <div className="card" style={{ borderLeft: '4px solid var(--accent-teal)' }}>
+          <div className="card" style={{ borderLeft: '4px solid var(--accent-teal)', opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD PROFIT</p>
-            <h3 style={{ color: 'var(--accent-teal)', marginTop: '5px' }}>KES {stats.netProfit.toLocaleString()}</h3>
+            <h3 style={{ color: 'var(--accent-teal)', marginTop: '5px' }}>
+              {loading ? '...' : `KES ${stats.netProfit.toLocaleString()}`}
+            </h3>
           </div>
         </div>
 
