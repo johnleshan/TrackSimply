@@ -126,6 +126,22 @@ const DashboardOverview = ({ onSelectTool }) => {
             style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
           />
         </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="btn" 
+            onClick={() => setDateRange({ start: '1970-01-01', end: '2099-12-31' })}
+            style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)' }}
+          >
+            SHOW ALL TIME
+          </button>
+          <button 
+            className="btn" 
+            onClick={() => setDateRange(getWeekRange())}
+            style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-dim)', border: '1px solid var(--glass-border)' }}
+          >
+            RESET TO WEEK
+          </button>
+        </div>
       </div>
 
       {/* Hero Section */}
