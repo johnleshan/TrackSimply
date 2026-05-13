@@ -10,7 +10,8 @@ const DebtTracker = () => {
 
   const fetchDebts = async () => {
     setLoading(true);
-    let query = supabase.from('debts').select('*').eq('user_id', user.id);
+    let query = supabase.from('debts').select('*');
+    if (user.role !== 'superadmin') query = query.eq('user_id', user.id);
     const { data, error } = await query.order('created_at', { ascending: false });
     if (!error && data) setDebts(data);
     setLoading(false);

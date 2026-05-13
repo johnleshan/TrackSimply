@@ -25,16 +25,20 @@ const DashboardOverview = ({ onSelectTool }) => {
     setLoading(true);
     try {
       // 1. Debts
-      const { data: debtData } = await supabase.from('debts').select('total').eq('user_id', user.id);
+      let debtQuery = supabase.from('debts').select('total');
+      if (user.role !== 'superadmin') debtQuery = debtQuery.eq('user_id', user.id);
+      const { data: debtData } = await debtQuery;
       const totalDebt = debtData?.reduce((sum, d) => sum + Number(d.total), 0) || 0;
 
       // 2. Bookkeeping (Profit) - Filtered by Date Range
-      const { data: txData } = await supabase
+      let txQuery = supabase
         .from('transactions')
         .select('amount, type, description, date')
-        .eq('user_id', user.id)
         .gte('date', dateRange.start)
         .lte('date', dateRange.end);
+      
+      if (user.role !== 'superadmin') txQuery = txQuery.eq('user_id', user.id);
+      const { data: txData } = await txQuery;
 
       let income = 0, expense = 0;
       const itemPerformance = {};
@@ -55,11 +59,15 @@ const DashboardOverview = ({ onSelectTool }) => {
       const underItem = sortedItems.length > 1 ? `${sortedItems[sortedItems.length - 1][0]} (KES ${sortedItems[sortedItems.length - 1][1].toLocaleString()})` : 'N/A';
 
       // 3. Inventory
-      const { data: invData } = await supabase.from('inventory').select('stock, reorder').eq('user_id', user.id);
+      let invQuery = supabase.from('inventory').select('stock, reorder');
+      if (user.role !== 'superadmin') invQuery = invQuery.eq('user_id', user.id);
+      const { data: invData } = await invQuery;
       const lowStock = invData?.filter(i => i.stock <= i.reorder).length || 0;
 
       // 4. Budgets
-      const { data: budData } = await supabase.from('budgets').select('budget, actual').eq('user_id', user.id);
+      let budQuery = supabase.from('budgets').select('budget, actual');
+      if (user.role !== 'superadmin') budQuery = budQuery.eq('user_id', user.id);
+      const { data: budData } = await budQuery;
       let totalB = 0, actualB = 0;
       budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });
       

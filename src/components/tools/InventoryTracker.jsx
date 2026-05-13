@@ -10,7 +10,8 @@ const InventoryTracker = () => {
 
   const fetchItems = async () => {
     setLoading(true);
-    let query = supabase.from('inventory').select('*').eq('user_id', user.id);
+    let query = supabase.from('inventory').select('*');
+    if (user.role !== 'superadmin') query = query.eq('user_id', user.id);
     const { data, error } = await query.order('price', { ascending: false });
     if (!error && data) setItems(data);
     setLoading(false);

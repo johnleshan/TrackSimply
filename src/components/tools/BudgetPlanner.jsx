@@ -10,7 +10,8 @@ const BudgetPlanner = () => {
 
   const fetchBudgets = async () => {
     setLoading(true);
-    let query = supabase.from('budgets').select('*').eq('user_id', user.id);
+    let query = supabase.from('budgets').select('*');
+    if (user.role !== 'superadmin') query = query.eq('user_id', user.id);
     const { data, error } = await query.order('category', { ascending: true });
     if (!error && data) setBudgets(data);
     setLoading(false);

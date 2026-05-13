@@ -33,9 +33,19 @@ const Bookkeeping = () => {
 
   const fetchTransactions = async () => {
     setLoading(true);
-    const { data: txs, error: txError } = await supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false });
-    const { data: vehs, error: vehError } = await supabase.from('vehicles').select('*').eq('user_id', user.id).order('reg_no', { ascending: true });
-    const { data: inv, error: invError } = await supabase.from('inventory').select('*').eq('user_id', user.id).order('name', { ascending: true });
+    let txQuery = supabase.from('transactions').select('*').order('date', { ascending: false });
+    let vehQuery = supabase.from('vehicles').select('*').order('reg_no', { ascending: true });
+    let invQuery = supabase.from('inventory').select('*').order('name', { ascending: true });
+
+    if (user.role !== 'superadmin') {
+      txQuery = txQuery.eq('user_id', user.id);
+      vehQuery = vehQuery.eq('user_id', user.id);
+      invQuery = invQuery.eq('user_id', user.id);
+    }
+
+    const { data: txs, error: txError } = await txQuery;
+    const { data: vehs, error: vehError } = await vehQuery;
+    const { data: inv, error: invError } = await invQuery;
     
     if (!txError && txs) {
       setAllTransactions(txs);
