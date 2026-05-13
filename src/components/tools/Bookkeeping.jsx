@@ -37,7 +37,15 @@ const Bookkeeping = () => {
     const { data: vehs, error: vehError } = await supabase.from('vehicles').select('*').eq('user_id', user.id).order('reg_no', { ascending: true });
     const { data: inv, error: invError } = await supabase.from('inventory').select('*').eq('user_id', user.id).order('name', { ascending: true });
     
-    if (!txError && txs) setAllTransactions(txs);
+    if (!txError && txs) {
+      setAllTransactions(txs);
+      // Auto-expand the most recent date if any
+      if (txs.length > 0) {
+        const latestDate = txs[0].date;
+        setExpandedDates({ [latestDate]: true });
+        setExpandedTypes({ [`${latestDate}-Income`]: true, [`${latestDate}-Expense`]: true });
+      }
+    }
     if (!vehError && vehs) setVehicles(vehs);
     if (!invError && inv) setInventoryItems(inv);
     setLoading(false);
@@ -298,51 +306,52 @@ const Bookkeeping = () => {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Total Expenses</p>
           <h2 style={{ color: 'var(--danger)', marginTop: '5px' }}>KES {combinedExpense.toLocaleString()}</h2>
         </div>
-        <div className="card" style={{ borderLeft: '4px solid var(--accent-teal)' }}>
+      <div className="card" style={{ borderLeft: '4px solid var(--accent-teal)' }}>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Net Profit</p>
           <h2 style={{ color: 'var(--accent-teal)', marginTop: '5px' }}>KES {combinedProfit.toLocaleString()}</h2>
         </div>
       </div>
 
+      {/* Period Selection - Global for both tabs */}
+      <div className="card" style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', alignItems: 'center', padding: '15px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD START</label>
+          <input 
+            type="date" 
+            value={dateRange.start} 
+            onChange={e => setDateRange({...dateRange, start: e.target.value})}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD END</label>
+          <input 
+            type="date" 
+            value={dateRange.end} 
+            onChange={e => setDateRange({...dateRange, end: e.target.value})}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="btn" 
+            onClick={() => setDateRange({ start: '1970-01-01', end: '2099-12-31' })}
+            style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'var(--accent-teal-soft)', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)', fontWeight: 700 }}
+          >
+            SHOW ALL TIME
+          </button>
+          <button 
+            className="btn" 
+            onClick={() => setDateRange(getWeekRange())}
+            style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-dim)', border: '1px solid var(--glass-border)', fontWeight: 700 }}
+          >
+            RESET TO WEEK
+          </button>
+        </div>
+      </div>
+
       {activeTab === 'business' ? (
         <>
-          {/* Period Selection */}
-          <div className="card" style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', alignItems: 'center', padding: '15px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD START</label>
-              <input 
-                type="date" 
-                value={dateRange.start} 
-                onChange={e => setDateRange({...dateRange, start: e.target.value})}
-                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD END</label>
-              <input 
-                type="date" 
-                value={dateRange.end} 
-                onChange={e => setDateRange({...dateRange, end: e.target.value})}
-                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                className="btn" 
-                onClick={() => setDateRange({ start: '1970-01-01', end: '2099-12-31' })}
-                style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)' }}
-              >
-                SHOW ALL TIME
-              </button>
-              <button 
-                className="btn" 
-                onClick={() => setDateRange(getWeekRange())}
-                style={{ padding: '8px 15px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-dim)', border: '1px solid var(--glass-border)' }}
-              >
-                RESET TO WEEK
-              </button>
-            </div>
-          </div>
 
           <div className="grid-cols-2" style={{ gap: '20px', marginBottom: '20px' }}>
             <div className="card" style={{ background: 'var(--accent-teal-soft)', textAlign: 'left' }}>
