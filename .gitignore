@@ -1,8 +1,19 @@
 node_modules
 dist
 .env
+.env.local
+.env.*.local
 .history
 .DS_Store
 .idea
 .vscode
 *.log
+
+# Database snapshots and dumps must never be committed.
+# These contain full plaintext business records and credentials.
+backups/
+*.sql.gz
+*.dump
+
+# Staging-only connection strings
+supabase/.env.staging
