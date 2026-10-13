@@ -1,17 +1,23 @@
 import React from 'react';
 import './ReportKit.css';
+import Info from './Info';
 
 /* ------------------------------------------------------------------ *
  * Layout primitives
  * ------------------------------------------------------------------ */
 
-export function Panel({ title, subtitle, actions, children, className = '', dense = false }) {
+export function Panel({ title, subtitle, actions, children, className = '', dense = false, info, infoTitle }) {
   return (
     <section className={`rk-panel ${dense ? 'rk-panel-dense' : ''} ${className}`}>
       {(title || actions) && (
         <header className="rk-panel-head">
           <div>
-            {title && <h3 className="rk-panel-title">{title}</h3>}
+            {title && (
+              <h3 className="rk-panel-title">
+                {title}
+                {info && <Info title={infoTitle || title} label={`More about ${title}`}>{info}</Info>}
+              </h3>
+            )}
             {subtitle && <p className="rk-panel-sub">{subtitle}</p>}
           </div>
           {actions && <div className="rk-panel-actions">{actions}</div>}
@@ -30,10 +36,13 @@ export function Grid({ children, min = 260, className = '' }) {
   );
 }
 
-export function SectionTitle({ children, hint }) {
+export function SectionTitle({ children, hint, info, infoTitle }) {
   return (
     <div className="rk-section-title">
-      <h2>{children}</h2>
+      <h2>
+        {children}
+        {info && <Info title={infoTitle || children} label={`More about ${children}`}>{info}</Info>}
+      </h2>
       {hint && <p>{hint}</p>}
     </div>
   );
@@ -57,14 +66,17 @@ export function Note({ children, tone = 'info' }) {
  * Stat tile
  * ------------------------------------------------------------------ */
 
-export function StatTile({ label, value, sub, tone, trend, trendLabel }) {
+export function StatTile({ label, value, sub, tone, trend, trendLabel, info, infoTitle }) {
   const trendTone = trend === null || trend === undefined || !Number.isFinite(trend)
     ? null
     : trend > 0.5 ? 'up' : trend < -0.5 ? 'down' : 'flat';
 
   return (
     <div className={`rk-stat ${tone ? `rk-stat-${tone}` : ''}`}>
-      <span className="rk-stat-label">{label}</span>
+      <span className="rk-stat-label">
+        {label}
+        {info && <Info title={infoTitle || label} label={`What is ${label}?`}>{info}</Info>}
+      </span>
       <span className="rk-stat-value">{value}</span>
       {sub && <span className="rk-stat-sub">{sub}</span>}
       {trendTone && (

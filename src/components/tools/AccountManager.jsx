@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useAppSettings } from '../../lib/appSettings';
 
 const AccountManager = () => {
   const { user: currentUser } = useAuth();
+  const { settings, setSetting } = useAppSettings();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,6 +111,40 @@ const AccountManager = () => {
         <h1>Account Management</h1>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Create and manage user accounts and permissions.</p>
       </div>
+
+      {/* Superadmin only. Applies to this browser, not the whole system. */}
+      {currentUser?.role === 'superadmin' && (
+        <div className="card" style={{ marginBottom: '25px' }}>
+          <h3>Application Settings</h3>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginTop: '6px' }}>
+            Report options for the Analytics view.
+          </p>
+
+          <label className="settings-row">
+            <input
+              type="checkbox"
+              checked={settings.reportActionsEnabled}
+              onChange={(e) => setSetting('reportActionsEnabled', e.target.checked)}
+            />
+            <span className="settings-track"><span className="settings-thumb" /></span>
+            <span className="settings-text">
+              <strong>Export and print in Analytics</strong>
+              <span>
+                Shows the &ldquo;Export CSV&rdquo; and &ldquo;Print / Save PDF&rdquo; buttons on the Analytics report.
+                Exporting writes real client records to a file on this device, so it is off by default.
+              </span>
+            </span>
+          </label>
+
+          <p className="settings-caveat">
+            <strong>This setting is stored in this browser only.</strong> It is not saved to the database,
+            so it does not follow you to another device, and it does not change what other users see.
+            It is a convenience preference, not a permission: anyone with developer tools could override
+            it. Genuinely restricting a capability requires server-side enforcement, which needs Row Level
+            Security and real auth tokens &mdash; neither is in place yet.
+          </p>
+        </div>
+      )}
 
       <div className="card">
         <h3>{editingId ? 'Edit User' : 'Create New User'}</h3>

@@ -14,6 +14,7 @@ import {
 } from '../ui/ReportKit';
 import DateRangePicker from '../ui/DateRangePicker';
 import { downloadCsv, printableTitle } from '../ui/ReportActions';
+import { useAppSettings } from '../../lib/appSettings';
 
 const PALETTE = ['#0891b2', '#22d3ee', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#0f766e', '#65a30d', '#b45309'];
 
@@ -27,6 +28,51 @@ const VEHICLE_COLORS = {
 
 const colorAt = (index) => PALETTE[index % PALETTE.length];
 
+/**
+ * Plain-language definitions. The point is that a business owner can find out
+ * what a figure means without leaving the report, so each one says what it is,
+ * how it is worked out, and what to do about it.
+ */
+const EXPLAIN = {
+  income: 'Total of every transaction recorded as Income in the selected period. Uses the date on each transaction, not when it was entered.',
+  expenses: 'Total of every transaction recorded as Expense in the selected period.',
+  netProfit: 'Income minus expenses for the period. If this is negative, the period cost more than it earned.',
+  margin: 'Net profit as a percentage of income. It answers "for every 100 shillings that came in, how much was kept?" A 20% margin means 20 of every 100 was profit.',
+  average: 'Net profit for the period divided by the number of buckets shown. With a month selected it is profit per day; with a year, per month.',
+  cumulative: 'Running total of profit from the start of the period to each point. Where the line sits above zero, the period is profitable overall up to that date. A line that dips below zero means the period had cost more than it earned by that point.',
+  dailyActivity: 'One bar per bucket. Green means that bucket ended in profit, red means it ended at a loss. Taller bars mean larger sums moved.',
+  incomeByCategory: 'Income grouped by the category recorded against each transaction. Use this to see which parts of the business actually bring money in.',
+  expensesByCategory: 'Expenses grouped by category, ranked largest first. This is usually the fastest way to find where money is going.',
+  spendMix: 'The same expenses as the bar chart, shown as proportions so the balance between categories is visible at a glance.',
+  movements: 'How much each expense category changed against the equivalent preceding period. A large increase is worth explaining before it becomes a habit.',
+  outliers: 'Compares the last complete month against the typical month for that same category. A category is flagged when it is at least twice its usual level. The current month is excluded because a part-finished month always looks small. Median, not average, so one big month cannot hide itself.',
+  budgetsAllocated: 'The total of every budget target you have set.',
+  budgetsSpent: 'What has actually been spent, taken from your transactions and matched to each budget by category name. This is deliberately not the "actual" figure stored on the budget, which is maintained by hand and drifts away from reality.',
+  budgetsProjected: 'Where spending will land by the end of the period if it continues at the current daily rate. This is the number that warns you before you overspend, rather than after.',
+  burnRate: 'The average amount spent per elapsed day. Multiply it by the days remaining to see the likely final figure.',
+  diverged: 'The budget records one figure and your transactions record another. It usually means spending was logged as a transaction but the budget was not updated, or the other way round.',
+  debtTotal: 'Everything outstanding across all obligations, added together.',
+  debtPayments: 'The total of the minimum monthly payments. This is what leaves the business each month before any profit.',
+  weightedRate: 'The average interest rate across all debts, weighted by how much is owed on each. A large balance at a high rate pulls this figure up, and that is where extra repayments save the most.',
+  dscr: 'Debt Service Coverage Ratio: average monthly income divided by total monthly repayments. It is the figure a lender uses to judge whether a business can carry its debt. Below 1.0 means repayments exceed income. Lenders generally want 1.25 or better.',
+  monthsToClear: 'How long the debt takes to clear if the minimum payment never changes. This is calculated properly by amortisation, where each month the interest is charged first and only the remainder reduces the balance.',
+  totalInterest: 'The total interest paid over the whole life of the debt. Compare it against the original balance: a small loan can cost far more than it first appears.',
+  neverClears: 'The minimum payment does not cover the monthly interest, so the balance does not fall. It will never be repaid at this level. Raising the payment, or restructuring the rate, is the only way to clear it.',
+  balancetrajectory: 'How the outstanding balance falls month by month. The curve is steep at first and flattens later, because early payments are mostly interest.',
+  stockValue: 'Total value of stock held, calculated at selling price. Since the records hold no cost price, this is what the stock should sell for, not what it cost you.',
+  lowStock: 'Items at or below their reorder point. The shortfall column shows how far below, so the most urgent item comes first.',
+  noMovement: 'Items with stock on hand but no matching sale in the period. This is money sitting on a shelf. Bear in mind that sales are matched to products by name in the transaction description, so a differently worded sale will not be counted.',
+  unitsSold: 'Units sold, taken from sales whose description mentions the product name. Matching is by name, so keep descriptions consistent for this to be accurate.',
+  fleetCost: 'Everything spent on vehicles in the period, across every vehicle.',
+  fleetRevenue: 'Income attributed to a vehicle. Only transactions with a registration number attached count here.',
+  fleetReturn: 'Net contribution from a vehicle as a percentage of the revenue it generated. A vehicle with costs but no revenue cannot be given a return figure, because there is no revenue to divide by.',
+  underperforming: 'Vehicles that carry running costs but have no revenue attributed to them. Either they are genuinely idle, or their income is being logged without a registration number.',
+  cashBreakEven: 'The revenue needed each month just to cover the current level of expenses. This is calculated on a cash basis, so it is the most reliable figure here.',
+  safetyMargin: 'How far current income sits above the break-even point, as a percentage. The higher it is, the more a bad month can be absorbed before the business starts losing money.',
+  modelledSplit: 'An estimate that splits expenses into those that scale with activity and those that do not. It depends on treating certain categories as variable, so treat it as a guide rather than an accounting result. The cash break-even figure does not rely on this.',
+  comparison: 'Each figure is compared against the equivalent period immediately before it, so a month is compared with the previous month and a quarter with the previous quarter.',
+};
+
 const deltaLabel = (delta) => {
   if (!delta || !Number.isFinite(delta.pct)) return null;
   const sign = delta.pct > 0 ? '+' : '';
@@ -35,6 +81,7 @@ const deltaLabel = (delta) => {
 
 export default function Analytics() {
   const { user } = useAuth();
+  const { settings } = useAppSettings();
 
   const [range, setRange] = useState(() => {
     const preset = buildPresets().find((p) => p.key === 'thisMonth');
@@ -212,14 +259,16 @@ export default function Analytics() {
           title="Reporting Period"
           subtitle="Every figure below respects this window. All comparisons are like-for-like."
           actions={
-            <>
-              <button type="button" className="rk-btn rk-btn-primary" onClick={handleExport} disabled={!hasActivity}>
-                ⬇ Export CSV
-              </button>
-              <button type="button" className="rk-btn" onClick={() => window.print()}>
-                🖨 Print / Save PDF
-              </button>
-            </>
+            settings.reportActionsEnabled ? (
+              <>
+                <button type="button" className="rk-btn rk-btn-primary" onClick={handleExport} disabled={!hasActivity}>
+                  ⬇ Export CSV
+                </button>
+                <button type="button" className="rk-btn" onClick={() => window.print()}>
+                  🖨 Print / Save PDF
+                </button>
+              </>
+            ) : null
           }
         >
           <DateRangePicker
@@ -238,7 +287,11 @@ export default function Analytics() {
         ) : (
           <>
             {/* ---------------- Headline ---------------- */}
-            <SectionTitle hint="Totals for the selected period, with the change against the equivalent preceding period.">
+            <SectionTitle
+              hint="Totals for the selected period, with the change against the equivalent preceding period."
+              info={EXPLAIN.comparison}
+              infoTitle="How comparisons work"
+            >
               Performance Summary
             </SectionTitle>
 
@@ -250,6 +303,7 @@ export default function Analytics() {
                 tone="good"
                 trend={report.comparison?.income.pct}
                 trendLabel={deltaLabel(report.comparison?.income)}
+                info={EXPLAIN.income}
               />
               <StatTile
                 label="Expenses"
@@ -258,6 +312,7 @@ export default function Analytics() {
                 tone="bad"
                 trend={report.comparison?.expense.pct}
                 trendLabel={deltaLabel(report.comparison?.expense)}
+                info={EXPLAIN.expenses}
               />
               <StatTile
                 label="Net Profit"
@@ -266,11 +321,13 @@ export default function Analytics() {
                 tone={netTone}
                 trend={report.comparison?.net.pct}
                 trendLabel={deltaLabel(report.comparison?.net)}
+                info={`${EXPLAIN.netProfit}\n\nMargin: ${EXPLAIN.margin}`}
               />
               <StatTile
                 label={`Average per ${granularityLabel(report.granularity)}`}
                 value={formatCurrency(report.totals.net / Math.max(1, seriesLength(report)))}
                 sub={`across ${seriesLength(report)} ${report.granularity} buckets`}
+                info={EXPLAIN.average}
               />
             </Grid>
 
@@ -279,27 +336,36 @@ export default function Analytics() {
               Trends
             </SectionTitle>
 
-            <Panel title="Income vs Expense" subtitle="Each bucket shows money in and money out.">
-              <TrendChart
-                labels={report.labels}
-                series={[
-                  { key: 'income', label: 'Income', color: '#059669', values: report.trendIncome },
-                  { key: 'expense', label: 'Expense', color: '#dc2626', values: report.trendExpense },
-                ]}
-              />
-            </Panel>
+            <Grid min={300}>
+              <Panel
+                title="Income vs Expense"
+                subtitle="Each bucket shows money in and money out."
+                info={EXPLAIN.dailyActivity}
+                infoTitle="Reading this chart"
+              >
+                <TrendChart
+                  labels={report.labels}
+                  valueFormat={formatCurrency}
+                  series={[
+                    { key: 'income', label: 'Income', color: '#059669', values: report.trendIncome },
+                    { key: 'expense', label: 'Expense', color: '#dc2626', values: report.trendExpense },
+                  ]}
+                />
+              </Panel>
+            </Grid>
 
             <Grid min={300}>
-              <Panel title="Cumulative Net Position" subtitle="Cumulative profit or loss to date. A line below zero means the period has cost money.">
+              <Panel title="Cumulative Net Position" subtitle="Cumulative profit or loss to date. A line below zero means the period has cost money." info={EXPLAIN.cumulative} infoTitle="What this line shows">
                 <TrendChart
                   labels={report.labels}
                   area
+                  valueFormat={formatCurrency}
                   series={[{ key: 'cumulative', label: 'Cumulative net', color: 'var(--accent-teal)', values: report.trendCumulative }]}
                 />
               </Panel>
 
-              <Panel title="Daily Activity" subtitle="Green where the period was in profit, red where it was not.">
-                <ActivityStrip buckets={report.series} />
+              <Panel title="Daily Activity" subtitle="Green where the period was in profit, red where it was not." info={EXPLAIN.dailyActivity} infoTitle="Reading the bars">
+                <ActivityStrip buckets={report.series} formatValue={formatCurrency} />
                 {report.activity.busiest && (
                   <Facts items={[
                     { label: 'Busiest period', value: formatDate(report.activity.busiest.date) },
@@ -316,11 +382,12 @@ export default function Analytics() {
             </SectionTitle>
 
             <Grid min={300}>
-              <Panel title="Income by Category">
+              <Panel title="Income by Category" info={EXPLAIN.incomeByCategory} infoTitle="Income categories">
                 <BarList
                   items={report.incomeLines.map((line, i) => ({
                     label: line.category,
                     value: line.amount,
+                    count: line.count,
                     color: colorAt(i),
                     meta: `${formatPercent(line.pct)} of income · ${line.count} entries`,
                   }))}
@@ -329,11 +396,12 @@ export default function Analytics() {
                 />
               </Panel>
 
-              <Panel title="Expenses by Category">
+              <Panel title="Expenses by Category" info={EXPLAIN.expensesByCategory} infoTitle="Expense categories">
                 <BarList
                   items={report.expenseLines.map((line, i) => ({
                     label: line.category,
                     value: line.amount,
+                    count: line.count,
                     color: colorAt(i),
                     meta: `${formatPercent(line.pct)} of spend · ${line.count} entries`,
                   }))}
@@ -344,7 +412,7 @@ export default function Analytics() {
             </Grid>
 
             <Grid min={300}>
-              <Panel title="Spend Mix">
+              <Panel title="Spend Mix" info={EXPLAIN.spendMix} infoTitle="Spend mix">
                 <Donut
                   segments={report.expenseLines.slice(0, 6).map((line, i) => ({
                     label: line.category,
@@ -353,10 +421,11 @@ export default function Analytics() {
                   }))}
                   centerLabel={formatCompact(report.totals.expense)}
                   centerSub="Total spend"
+                  formatValue={formatCurrency}
                 />
               </Panel>
 
-              <Panel title="Biggest Movements" subtitle="Change in each category against the previous period.">
+              <Panel title="Biggest Movements" subtitle="Change in each category against the previous period." info={EXPLAIN.movements} infoTitle="Biggest movements">
                 {report.comparison ? (
                   <BarList
                     items={report.movers.map((mover, i) => ({
@@ -375,13 +444,13 @@ export default function Analytics() {
             </Grid>
 
             {report.outliers.length > 0 && (
-              <Panel title="Unusual Spending" subtitle="Categories where the latest month is far above their own recent norm.">
+              <Panel title="Unusual Spending" subtitle="Categories where the latest complete month is far above their own recent norm." info={EXPLAIN.outliers} infoTitle="How this is detected">
                 <DataTable
                   keyField="category"
                   rows={report.outliers}
                   columns={[
                     { key: 'category', label: 'Category', render: (r) => r.category },
-                    { key: 'amount', label: 'This month', align: 'right', render: (r) => formatCurrency(r.amount) },
+                    { key: 'amount', label: 'Last complete month', align: 'right', render: (r) => formatCurrency(r.amount) },
                     { key: 'median', label: 'Typical month', align: 'right', render: (r) => formatCurrency(r.median) },
                     {
                       key: 'excess',
@@ -406,18 +475,20 @@ export default function Analytics() {
                 </SectionTitle>
 
                 <Grid min={210}>
-                  <StatTile label="Allocated" value={formatCurrency(report.budgets.totals.target)} />
+                  <StatTile label="Allocated" value={formatCurrency(report.budgets.totals.target)} info={EXPLAIN.budgetsAllocated} />
                   <StatTile
                     label="Spent"
                     value={formatCurrency(report.budgets.totals.actual)}
                     sub={`${formatPercent(report.budgets.totals.used)} of allocation`}
                     tone={report.budgets.totals.used >= 100 ? 'bad' : report.budgets.totals.used >= 85 ? 'warn' : 'good'}
+                    info={EXPLAIN.budgetsSpent}
                   />
                   <StatTile
                     label="Projected at period end"
                     value={formatCurrency(report.budgets.totals.projected)}
                     sub={formatPercent(report.budgets.totals.projectedUsed)}
                     tone={report.budgets.totals.projectedUsed > 100 ? 'bad' : 'good'}
+                    info={EXPLAIN.budgetsProjected}
                   />
                   <StatTile
                     label="Days remaining"
@@ -432,7 +503,7 @@ export default function Analytics() {
                   </Note>
                 )}
 
-                <Panel title="Budget Lines" subtitle="Burn rate is the average spent per elapsed day.">
+                <Panel title="Budget Lines" subtitle="Burn rate is the average spent per elapsed day." info={`${EXPLAIN.burnRate}\n\n${EXPLAIN.diverged}`} infoTitle="Burn rate and divergence">
                   <DataTable
                     rows={report.budgets.rows}
                     columns={[
@@ -447,7 +518,7 @@ export default function Analytics() {
                       { key: 'actual', label: 'Spent', align: 'right', render: (r) => formatCurrency(r.actual) },
                       { key: 'used', label: 'Utilisation', render: (r) => (
                         <div style={{ minWidth: '120px' }}>
-                          <Gauge value={r.used ?? 0} max={100} />
+                          <Gauge value={r.used ?? 0} max={100} label={`${r.category} utilisation`} />
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
                             {r.used === null ? '—' : formatPercent(r.used)}
                           </div>
@@ -473,18 +544,21 @@ export default function Analytics() {
                 </SectionTitle>
 
                 <Grid min={210}>
-                  <StatTile label="Total Outstanding" value={formatCurrency(report.debts.totalDebt)} sub={`${report.debts.rows.length} obligations`} />
+                  <StatTile label="Total Outstanding" value={formatCurrency(report.debts.totalDebt)} sub={`${report.debts.rows.length} obligations`} info={EXPLAIN.debtTotal} />
                   <StatTile
                     label="Monthly Payments"
                     value={formatCurrency(report.debts.totalMonthlyPayment)}
                     sub={`${formatCurrency(report.debts.totalMonthlyInterest)} is interest`}
+                    info={EXPLAIN.debtPayments}
                   />
-                  <StatTile label="Weighted Interest Rate" value={formatPercent(report.debts.weightedRate, 2)} />
+                  <StatTile label="Weighted Interest Rate" value={formatPercent(report.debts.weightedRate, 2)} info={EXPLAIN.weightedRate} />
                   <StatTile
                     label="Debt Service Coverage"
                     value={report.debts.dscr === null ? '—' : `${report.debts.dscr.toFixed(2)}×`}
                     sub={coverageHint(report.debts.coverage)}
                     tone={report.debts.coverage === 'deficit' ? 'bad' : report.debts.coverage === 'strained' ? 'warn' : 'good'}
+                    info={EXPLAIN.dscr}
+                    infoTitle="Debt Service Coverage Ratio"
                   />
                 </Grid>
 
@@ -494,7 +568,7 @@ export default function Analytics() {
                   </Note>
                 )}
 
-                <Panel title="Payoff Schedule">
+                <Panel title="Payoff Schedule" info={`${EXPLAIN.monthsToClear}\n\n${EXPLAIN.totalInterest}\n\n${EXPLAIN.neverClears}`} infoTitle="How these are worked out">
                   <DataTable
                     rows={report.debts.rows}
                     columns={[
@@ -521,9 +595,10 @@ export default function Analytics() {
                 </Panel>
 
                 {report.debts.rows.some((d) => d.schedule.schedule.length > 1) && (
-                  <Panel title="Balance Trajectory" subtitle="Remaining principal month by month. The curve flattens as the balance amortises.">
+                  <Panel title="Balance Trajectory" subtitle="Remaining principal month by month. The curve flattens as the balance amortises." info={EXPLAIN.balancetrajectory} infoTitle="Why the curve flattens">
                     <TrendChart
                       height={220}
+                      valueFormat={formatCurrency}
                       labels={(() => {
                         const longest = report.debts.rows.reduce(
                           (best, d) => (d.schedule.schedule.length > (best?.schedule.schedule.length ?? 0) ? d : best),
@@ -554,24 +629,26 @@ export default function Analytics() {
                 </SectionTitle>
 
                 <Grid min={210}>
-                  <StatTile label="Stock Value" value={formatCurrency(report.inventory.totals.value)} sub={`${report.inventory.totals.units} units across ${report.inventory.totals.items} items`} />
+                  <StatTile label="Stock Value" value={formatCurrency(report.inventory.totals.value)} sub={`${report.inventory.totals.units} units across ${report.inventory.totals.items} items`} info={EXPLAIN.stockValue} />
                   <StatTile
                     label="Low Stock Items"
                     value={report.inventory.totals.lowStockCount}
                     sub={formatCurrency(report.inventory.totals.lowStockValue) + ' tied up'}
                     tone={report.inventory.totals.lowStockCount > 0 ? 'warn' : 'good'}
+                    info={EXPLAIN.lowStock}
                   />
-                  <StatTile label="Units Sold" value={report.inventory.totals.unitsSold} sub={formatCurrency(report.inventory.totals.revenue) + ' matched revenue'} />
+                  <StatTile label="Units Sold" value={report.inventory.totals.unitsSold} sub={formatCurrency(report.inventory.totals.revenue) + ' matched revenue'} info={EXPLAIN.unitsSold} />
                   <StatTile
                     label="No Movement"
                     value={report.inventory.totals.deadCount}
                     sub={formatCurrency(report.inventory.totals.deadValue) + ' unsold in period'}
                     tone={report.inventory.totals.deadValue > 0 ? 'warn' : 'good'}
+                    info={EXPLAIN.noMovement}
                   />
                 </Grid>
 
                 {report.inventory.critical.length > 0 && (
-                  <Panel title="Reorder Urgency" subtitle="Ranked by how far below the reorder point each item has fallen.">
+                  <Panel title="Reorder Urgency" subtitle="Ranked by how far below the reorder point each item has fallen." info={EXPLAIN.lowStock} infoTitle="Reorder urgency">
                     <DataTable
                       rows={report.inventory.critical}
                       columns={[
@@ -587,7 +664,7 @@ export default function Analytics() {
                   </Panel>
                 )}
 
-                <Panel title="Stock Detail">
+                <Panel title="Stock Detail" info={`${EXPLAIN.unitsSold}\n\n${EXPLAIN.noMovement}`} infoTitle="How sales are matched">
                   <DataTable
                     rows={report.inventory.rows}
                     columns={[
@@ -615,9 +692,9 @@ export default function Analytics() {
                 </SectionTitle>
 
                 <Grid min={210}>
-                  <StatTile label="Fleet Running Cost" value={formatCurrency(report.fleet.totals.expense)} sub={`${report.fleet.totals.active} of ${report.fleet.totals.vehicles} active`} tone="bad" />
-                  <StatTile label="Fleet Revenue" value={formatCurrency(report.fleet.totals.income)} tone="good" />
-                  <StatTile label="Fleet Net" value={formatCurrency(report.fleet.totals.net)} tone={report.fleet.totals.net >= 0 ? 'good' : 'bad'} />
+                  <StatTile label="Fleet Running Cost" value={formatCurrency(report.fleet.totals.expense)} sub={`${report.fleet.totals.active} of ${report.fleet.totals.vehicles} active`} tone="bad" info={EXPLAIN.fleetCost} />
+                  <StatTile label="Fleet Revenue" value={formatCurrency(report.fleet.totals.income)} tone="good" info={EXPLAIN.fleetRevenue} />
+                  <StatTile label="Fleet Net" value={formatCurrency(report.fleet.totals.net)} tone={report.fleet.totals.net >= 0 ? 'good' : 'bad'} info={EXPLAIN.fleetReturn} />
                   <StatTile label="Fuel" value={formatCurrency(report.fleet.totals.fuel)} sub={`${formatCurrency(report.fleet.totals.maintenance)} maintenance`} />
                 </Grid>
 
@@ -627,7 +704,7 @@ export default function Analytics() {
                   </Note>
                 )}
 
-                <Panel title="Per Vehicle">
+                <Panel title="Per Vehicle" info={`${EXPLAIN.fleetReturn}\n\n${EXPLAIN.underperforming}`} infoTitle="Reading the return column">
                   <DataTable
                     rows={report.fleet.rows}
                     columns={[
@@ -671,7 +748,7 @@ export default function Analytics() {
             </SectionTitle>
 
             <Grid min={280}>
-              <Panel title="Cash Basis">
+              <Panel title="Cash Basis" info={`${EXPLAIN.cashBreakEven}\n\n${EXPLAIN.safetyMargin}`} infoTitle="Cash break-even">
                 <Facts items={[
                   { label: 'Average monthly income', value: formatCurrency(report.breakEven.avgIncome) },
                   { label: 'Average monthly expenses', value: formatCurrency(report.breakEven.avgExpense) },
@@ -681,7 +758,7 @@ export default function Analytics() {
                 ]} />
               </Panel>
 
-              <Panel title="Modelled Split" subtitle="Estimated by treating certain categories as variable costs.">
+              <Panel title="Modelled Split" subtitle="Estimated by treating certain categories as variable costs." info={EXPLAIN.modelledSplit} infoTitle="About this estimate">
                 <Facts items={[
                   { label: 'Fixed costs', value: formatCurrency(report.breakEven.fixedExpense) },
                   { label: 'Variable costs', value: formatCurrency(report.breakEven.variableExpense) },
@@ -699,13 +776,16 @@ export default function Analytics() {
               Profit &amp; Loss
             </SectionTitle>
 
-            <Panel>
+            <Panel info={EXPLAIN.comparison} infoTitle="How this is built">
               <DataTable
                 rows={[
-                  ...report.incomeLines.map((l) => ({ group: 'Income', label: l.category, amount: l.amount, pct: l.pct })),
-                  ...report.expenseLines.map((l) => ({ group: 'Expense', label: l.category, amount: l.amount, pct: l.pct })),
+                  // Keyed by group as well as label: a category can appear on
+                  // both sides of the statement, and identical keys would make
+                  // React duplicate or drop rows.
+                  ...report.incomeLines.map((l) => ({ key: `income-${l.category}`, group: 'Income', label: l.category, amount: l.amount, pct: l.pct })),
+                  ...report.expenseLines.map((l) => ({ key: `expense-${l.category}`, group: 'Expense', label: l.category, amount: l.amount, pct: l.pct })),
                 ]}
-                keyField="label"
+                keyField="key"
                 columns={[
                   { key: 'group', label: 'Type', render: (r) => (
                     <span style={{ color: r.group === 'Income' ? 'var(--success)' : 'var(--danger)', fontWeight: 700, fontSize: '0.78rem' }}>
