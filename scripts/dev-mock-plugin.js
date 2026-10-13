@@ -144,6 +144,18 @@ function applyFilters(rows, params) {
   return out;
 }
 
+const ALLOWED_HEADERS = [
+  'authorization',
+  'apikey',
+  'content-type',
+  'x-client-info',
+  'prefer',
+  'range',
+  'accept-profile',
+  'content-profile',
+  'x-supabase-api-version',
+].join(', ');
+
 function mockPlugin() {
   let fixtures = buildFixtures();
 
@@ -154,6 +166,23 @@ function mockPlugin() {
       server.middlewares.use((req, res, next) => {
         const rawUrl = req.url || '';
         if (!rawUrl.startsWith('/rest/v1/') && !rawUrl.startsWith('/auth/v1/')) return next();
+
+        // The Supabase client sends `authorization` and `apikey`, so opening the
+        // app on any origin other than the one in VITE_SUPABASE_URL produces
+        // cross-origin requests that trigger a preflight. Reaching the app via
+        // localhost, 127.0.0.1 or the LAN address are all different origins, so
+        // without this the browser rejects every database call.
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range');
+        res.setHeader('Access-Control-Max-Age', '86400');
+        res.setHeader('Vary', 'Origin');
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          return res.end();
+        }
 
         const base = 'http://localhost';
         const parsed = new URL(rawUrl, base);
@@ -176,7 +205,6 @@ function mockPlugin() {
         const rows = allRows ? applyFilters(allRows, parsed.searchParams) : [];
         const wantsSingle = (req.headers.accept || '').includes('vnd.pgrst.object');
 
-        res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Content-Range', `0-${Math.max(rows.length - 1, 0)}/*`);
 
         // HEAD carries the row count for { count: 'exact', head: true }.
