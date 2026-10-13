@@ -36,25 +36,37 @@ const EXCLUDED_COLUMNS = new Set(['password']);
 
 const PAGE_SIZE = 1000;
 
+/**
+ * Reads credentials the same way Vite does, so a locally configured project
+ * works without exporting variables by hand. `.env.local` is checked first
+ * because it is where real credentials belong.
+ */
 function loadEnv() {
-  const envPath = path.join(__dirname, '..', '.env');
-  if (!fs.existsSync(envPath)) return {};
   const out = {};
-  for (const rawLine of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq === -1) continue;
-    const key = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
+
+  for (const name of ['.env.local', '.env']) {
+    const envPath = path.join(__dirname, '..', name);
+    if (!fs.existsSync(envPath)) continue;
+
+    for (const rawLine of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq === -1) continue;
+      const key = line.slice(0, eq).trim();
+      if (out[key] !== undefined) continue;
+
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      out[key] = value;
     }
-    out[key] = value;
   }
+
   return out;
 }
 
