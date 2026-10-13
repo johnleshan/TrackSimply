@@ -78,7 +78,8 @@ const DashboardOverview = ({ onSelectTool }) => {
       
       setStats({ 
         totalDebt, 
-        netProfit: income - expense, 
+        netProfit: income - expense,
+        transactionCount: txData?.length || 0,
         lowStock, 
         budgetUtil: totalB > 0 ? (actualB / totalB) * 100 : 0 
       });
@@ -110,8 +111,8 @@ const DashboardOverview = ({ onSelectTool }) => {
   }, [user, dateRange]);
 
   const features = [
+    { id: 'analytics', icon: '📊', title: 'Business Analytics', desc: 'Profit & loss, cash flow, budget burn rate, debt payoff and fleet economics — derived from your existing records.', stat: loading ? 'Syncing...' : `${stats.transactionCount ?? 0} records analysed` },
     { id: 'ai', icon: '✨', title: 'AI Assistant', desc: 'Speak naturally to manage your entire app. Proactive alerts and smart financial logic.' },
-    { id: 'debt', icon: '📈', title: 'Debt Mastery', desc: 'Visualize and conquer liabilities with precise tracking of interest rates and payoff goals.', stat: loading ? 'Syncing...' : `KES ${stats.totalDebt.toLocaleString()} tracked` },
     { id: 'bookkeeping', icon: '📝', title: 'Business Pulse', desc: 'Log every income and expense. Real-time Profit/Loss for the modern entrepreneur.', stat: loading ? 'Syncing...' : `Net: KES ${stats.netProfit.toLocaleString()}` },
     { id: 'budget', icon: '⚖️', title: 'Budget Intelligence', desc: 'Intelligent category-based spending control with live progress indicators.', stat: loading ? 'Syncing...' : `${stats.budgetUtil.toFixed(1)}% utilized` },
     { id: 'inventory', icon: '📦', title: 'Active Inventory', desc: 'Real-time stock monitoring with smart reorder alerts. Never run out.', stat: loading ? 'Syncing...' : `${stats.lowStock} low stock items` },

@@ -401,3 +401,35 @@ input:focus {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-teal); }
+
+/* The analytics report is meant to be printable, so its heading only appears on
+   paper. Print rules for the report panels live in ui/ReportKit.css. */
+.rk-print-header { display: none; }
+
+@media print {
+  .rk-print-header {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #000;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #999;
+  }
+
+  /* App chrome has no place on a filed report. */
+  .sidebar,
+  .bottom-nav,
+  .mobile-header,
+  .ai-toggle,
+  .ai-chat-window,
+  .ai-proactive-bubble {
+    display: none !important;
+  }
+
+  .tool-view {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+}

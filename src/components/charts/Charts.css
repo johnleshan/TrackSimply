@@ -1,0 +1,247 @@
+/* Charts are dependency-free SVG and HTML so they inherit the app's theme
+   variables automatically and cost nothing in bundle size. */
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+/* ---- Trend ---- */
+
+.chart-trend {
+  position: relative;
+  width: 100%;
+}
+
+.chart-trend svg {
+  display: block;
+  overflow: visible;
+}
+
+.chart-gridline {
+  stroke: var(--glass-border);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.chart-zeroline {
+  stroke: var(--text-dim);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+
+.chart-guide {
+  stroke: var(--accent-teal);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+.chart-axis-label {
+  fill: var(--text-dim);
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  z-index: 20;
+  min-width: 140px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.chart-tooltip strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-main);
+}
+
+.chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.chart-tooltip-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.chart-tooltip-value {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text-main);
+  padding-left: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* ---- Bar list ---- */
+
+.chart-barlist {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chart-barlist-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.chart-barlist-label {
+  font-size: 0.82rem;
+  color: var(--text-main);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-barlist-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  flex: 0 0 auto;
+}
+
+.chart-barlist-track {
+  height: 8px;
+  background: var(--accent-teal-soft);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chart-barlist-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.chart-barlist-meta {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* ---- Donut ---- */
+
+.chart-donut {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.chart-donut circle {
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.chart-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  padding: 0 18px;
+}
+
+.chart-donut-center strong {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.chart-donut-center span {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+/* ---- Activity strip ---- */
+
+.chart-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 64px;
+  width: 100%;
+}
+
+.chart-strip-cell {
+  flex: 1 1 0;
+  min-width: 2px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chart-strip-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease, opacity 0.3s ease;
+}
+
+/* ---- Gauge ---- */
+
+.chart-gauge {
+  width: 100%;
+  background: var(--accent-teal-soft);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chart-gauge-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .chart-tooltip {
+    font-size: 0.7rem;
+    min-width: 120px;
+  }
+}

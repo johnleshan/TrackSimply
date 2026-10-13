@@ -1,0 +1,341 @@
+.rk-panel {
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-inner), var(--shadow-lg);
+  backdrop-filter: blur(16px);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  break-inside: avoid;
+}
+
+.rk-panel-dense {
+  padding: 16px;
+  gap: 12px;
+}
+
+.rk-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rk-panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0.2px;
+}
+
+.rk-panel-sub {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 3px;
+  max-width: 60ch;
+}
+
+.rk-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rk-grid {
+  display: grid;
+  gap: 18px;
+}
+
+/* ---- Section title ---- */
+
+.rk-section-title {
+  margin: 8px 0 2px;
+}
+
+.rk-section-title h2 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent-teal);
+}
+
+.rk-section-title p {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  max-width: 70ch;
+}
+
+/* ---- Stat tile ---- */
+
+.rk-stat {
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--accent-teal);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  break-inside: avoid;
+}
+
+.rk-stat-good { border-left-color: var(--success); }
+.rk-stat-bad { border-left-color: var(--danger); }
+.rk-stat-warn { border-left-color: var(--warning); }
+
+.rk-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.rk-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.rk-stat-sub {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.rk-stat-trend {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.rk-trend-up { color: var(--success); }
+.rk-trend-down { color: var(--danger); }
+.rk-trend-flat { color: var(--text-dim); }
+
+/* ---- Verdict ---- */
+
+.rk-verdict {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+.rk-verdict-ok {
+  background: rgba(5, 150, 105, 0.14);
+  color: var(--success);
+}
+
+.rk-verdict-warn {
+  background: rgba(217, 119, 6, 0.14);
+  color: var(--warning);
+}
+
+.rk-verdict-bad {
+  background: rgba(220, 38, 38, 0.14);
+  color: var(--danger);
+}
+
+.rk-verdict-muted {
+  background: var(--accent-teal-soft);
+  color: var(--text-dim);
+}
+
+/* ---- Empty state ---- */
+
+.rk-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 34px 18px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.rk-empty-icon {
+  font-size: 1.8rem;
+  opacity: 0.55;
+}
+
+.rk-empty strong {
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+.rk-empty span {
+  font-size: 0.8rem;
+  max-width: 42ch;
+}
+
+/* ---- Note ---- */
+
+.rk-note {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: var(--accent-teal-soft);
+  border-left: 3px solid var(--accent-teal);
+  line-height: 1.5;
+}
+
+.rk-note-warn {
+  background: rgba(217, 119, 6, 0.1);
+  border-left-color: var(--warning);
+}
+
+.rk-note-bad {
+  background: rgba(220, 38, 38, 0.1);
+  border-left-color: var(--danger);
+}
+
+/* ---- Facts ---- */
+
+.rk-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.rk-fact dt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+
+.rk-fact dd {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* ---- Buttons ---- */
+
+.rk-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.rk-btn:hover {
+  border-color: var(--accent-teal);
+  transform: translateY(-1px);
+}
+
+.rk-btn-primary {
+  background: linear-gradient(135deg, var(--accent-teal), #06b6d4);
+  border-color: transparent;
+  color: #0f172a;
+}
+
+/* ---- Date presets ---- */
+
+.rk-daterange {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rk-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.rk-preset {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.rk-preset:hover {
+  color: var(--text-main);
+  border-color: var(--accent-teal);
+}
+
+.rk-preset-active {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+  color: #0f172a;
+}
+
+.rk-custom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.rk-custom input[type='date'] {
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+/* ---- Printing ---- */
+
+/* The report is designed to be printed and filed, so panels avoid breaking
+   across pages and the navigation chrome is suppressed. */
+@media print {
+  .rk-panel {
+    box-shadow: none;
+    backdrop-filter: none;
+    border: 1px solid #ccc;
+    background: #fff;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .rk-stat {
+    border: 1px solid #ccc;
+    background: #fff;
+    break-inside: avoid;
+  }
+
+  .rk-panel-actions,
+  .rk-presets,
+  .rk-custom {
+    display: none !important;
+  }
+
+  .chart-trend,
+  .chart-barlist,
+  .rk-grid {
+    break-inside: avoid;
+  }
+}

@@ -17,3 +17,5 @@ backups/
 
 # Staging-only connection strings
 supabase/.env.staging
+# Local Playwright smoke-test artefacts
+shot-*.png

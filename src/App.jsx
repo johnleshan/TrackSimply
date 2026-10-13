@@ -5,6 +5,7 @@ import DashboardOverview from './components/tools/DashboardOverview';
 import DebtTracker from './components/tools/DebtTracker';
 import Bookkeeping from './components/tools/Bookkeeping';
 import BudgetPlanner from './components/tools/BudgetPlanner';
+import Analytics from './components/tools/Analytics';
 import InventoryTracker from './components/tools/InventoryTracker';
 import VehicleManagement from './components/tools/VehicleManagement';
 import AccountManager from './components/tools/AccountManager';
@@ -144,13 +145,14 @@ function App() {
   };
 
   const getToolTitle = () => {
-    const titles = { 
+const titles = { 
       overview: 'Dashboard', 
       debt: 'Debt Tracker', 
       bookkeeping: 'Bookkeeping', 
-      budget: 'Budget Planner', 
+      budget: 'Budget Planner',
       inventory: 'Inventory',
       vehicles: 'Fleet Registry',
+      analytics: 'Analytics',
       accounts: 'Account Management'
     };
     return titles[activeTool] || 'TrackSimply';
@@ -164,6 +166,7 @@ function App() {
       case 'budget': return <BudgetPlanner />;
       case 'inventory': return <InventoryTracker />;
       case 'vehicles': return <VehicleManagement />;
+      case 'analytics': return <Analytics />;
       case 'accounts': return <AccountManager />;
       default: return <DashboardOverview onSelectTool={setActiveTool} />;
     }
