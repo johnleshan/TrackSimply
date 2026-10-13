@@ -6,35 +6,57 @@ passwords to the console.
 
 ## Running the app locally
 
-Two modes. Pick deliberately.
+Three modes. Pick deliberately — two of them touch the live database.
 
 ### Demo mode — `npm run dev:demo`
 
 Serves fixture data from the Vite dev server (`scripts/dev-mock-plugin.js`).
-**No Supabase project is contacted at any point**, so it is safe to click
-through, add records and delete them freely.
+**No Supabase project is contacted at all**, so it is safe to click through, add
+records and delete them freely.
 
 Open <http://localhost:5173> and sign in with `demo_owner` / `demo`
 (a `demo_staff` / `demo` account exists too, to show tenant separation).
 
 The mock is a Vite plugin declaring `apply: 'serve'`, so it is excluded from
-`npm run build` and cannot reach production. `.env.demo` points the Supabase
-client at the dev server itself, which is how the requests get intercepted.
+`npm run build` and cannot reach production.
 
-### Live mode — `npm run dev`
+### Credentials
 
-Connects to the real project. Put the real values in `.env.development.local`
-(gitignored):
+Put the real project values in **`.env.local`** at the repo root (gitignored):
 
 ```
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon key>
+VITE_SUPABASE_ANON_KEY=<anon public key>
 ```
 
-> **Anything you do in live mode writes to the live database.**
-> There is no read-only mode and no confirmation prompt. Because Row Level
-> Security is not enabled, the anon key can read and write every row. Use demo
-> mode unless you specifically intend to touch client data.
+`.env.local` is loaded in every Vite mode. Do not use `.env.development.local` —
+that is only loaded in `development` mode and would be silently ignored by
+`--mode live`.
+
+The anon key is publishable by design; it is already embedded in the deployed
+client bundle. It does **not** need protecting. The `service_role` key does, and
+must never go in this project — nothing here talks to a server.
+
+### Live, read-only — `npm run dev:live`
+
+Connects to the real database with every create, update and delete blocked by a
+dev-only guard (`scripts/dev-write-guard.js`). Use this to review real client
+records, verify analytics against real figures, and click around freely — you
+cannot alter anything.
+
+Blocked requests fail with HTTP 405 and a console explanation rather than
+silently, so nothing looks like a mysterious bug.
+
+> This matters because **Row Level Security is not enabled**. The anon key can
+> read and write every row, so any local instance pointed at production is a
+> hazard. This mode removes that hazard without removing your ability to test.
+
+### Live, writable — `npm run dev`
+
+Connects to the real database and allows writes. There is no confirmation beyond
+the app's own dialogs, and no read-only mode.
+
+> Anything you do here **changes live client records**.
 
 To check connectivity without the UI:
 
@@ -42,8 +64,7 @@ To check connectivity without the UI:
 node scripts/check-connection.cjs
 ```
 
-This is read-only. It reports per-table row counts and confirms the project is
-reachable.
+Read-only. Reports per-table row counts and confirms the project is reachable.
 
 ## `snapshot-data.cjs`
 

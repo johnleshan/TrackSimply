@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:demo": "vite --mode demo",
+    "dev:live": "vite --mode live",
     "build": "vite build",
     "preview": "vite preview",
     "verify:analytics": "node scripts/verify-analytics.js"

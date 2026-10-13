@@ -1,13 +1,19 @@
 node_modules
 dist
-.env
-.env.local
-.env.*.local
 .history
 .DS_Store
 .idea
 .vscode
 *.log
+
+# Real credentials live here and must never be committed.
+.env
+.env.local
+.env.*.local
+
+# .env.demo is deliberately tracked. It holds no secrets — dummy values that
+# point the Supabase client at the local dev server in demo mode.
+!.env.demo
 
 # Database snapshots and dumps must never be committed.
 # These contain full plaintext business records and credentials.
@@ -15,7 +21,13 @@ backups/
 *.sql.gz
 *.dump
 
+# Vercel project link
+.vercel
+
 # Staging-only connection strings
 supabase/.env.staging
+
 # Local Playwright smoke-test artefacts
 shot-*.png
+demo-*.png
+dev-server.log

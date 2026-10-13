@@ -1,21 +1,24 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { mockPlugin } from './scripts/dev-mock-plugin.js'
+import { writeGuardPlugin } from './scripts/dev-write-guard.js'
 
-// Demo mode is selected with `vite --mode demo`, which loads .env.demo and sets
-// VITE_TRACKSIMPLY_MOCK=1. It serves fixture data from the dev server instead
-// of contacting a Supabase project.
+// Three ways to run the app, selected with --mode. The plugins are declared
+// apply: 'serve', so none of them exists in a production build.
 //
-// The plugin declares `apply: 'serve'`, so it is excluded from `vite build`
-// entirely and cannot reach production.
+//   npm run dev:demo   fixtures from the dev server, writes allowed
+//   npm run dev:live   the real database, writes blocked (safe browsing)
+//   npm run dev        the real database, writes allowed (deliberate)
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const useMock = env.VITE_TRACKSIMPLY_MOCK === '1'
+  const useGuard = env.VITE_TRACKSIMPLY_READONLY === '1'
 
   return {
     plugins: [
       react(),
       ...(useMock ? [mockPlugin()] : []),
+      ...(useGuard ? [writeGuardPlugin()] : []),
     ],
     server: {
       host: true,
