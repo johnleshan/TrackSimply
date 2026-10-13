@@ -519,3 +519,17 @@ input:focus {
   border-left: 3px solid var(--accent-teal);
   line-height: 1.5;
 }
+
+.settings-caveat code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.72rem;
+  background: var(--bg-secondary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+}
+
+.settings-caveat-warn {
+  background: rgba(217, 119, 6, 0.1);
+  border-left-color: var(--warning);
+}

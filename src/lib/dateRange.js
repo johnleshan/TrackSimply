@@ -147,9 +147,34 @@ export function enumerateBuckets(range, granularity) {
   return buckets;
 }
 
+/**
+ * A readable name for a range. A calendar-month range gets the month name,
+ * which is what someone actually thinks in; a bare "2026-09-01 to 2026-09-30"
+ * makes them work it out themselves.
+ */
 export function describeRange(range) {
   const preset = buildPresets().find((p) => p.range.start === range.start && p.range.end === range.end);
   if (preset) return preset.label;
   if (isAllTime(range)) return 'All Time';
-  return `${range.start} to ${range.end}`;
+
+  const start = new Date(`${range.start}T00:00:00`);
+  const end = new Date(`${range.end}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${range.start} to ${range.end}`;
+  }
+
+  const firstOfMonth = start.getDate() === 1;
+  const lastOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate() === end.getDate();
+  const sameMonth = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth();
+
+  if (firstOfMonth && lastOfMonth && sameMonth) {
+    return start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const fmt = (d, withYear) =>
+    d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}) });
+  return sameYear
+    ? `${fmt(start, false)} – ${fmt(end, true)}`
+    : `${fmt(start, true)} – ${fmt(end, true)}`;
 }

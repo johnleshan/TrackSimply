@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { buildPresets, describeRange, autoGranularity, isAllTime } from '../../lib/dateRange';
-import { formatCurrency, formatCompact, formatPercent, formatDate } from '../../lib/format';
+import { formatCurrency, formatCompact, formatPercent, formatDate, parseIsoDate, toIsoDate } from '../../lib/format';
 import {
   summarize, profitAndLoss, timeSeries, periodComparison, byCategory,
   budgetAnalytics, debtAnalytics, inventoryAnalytics, fleetAnalytics,
   breakEven, detectOutliers, topMovers, activityHeatmap, resolveAnalysisRange,
+  dataExtent,
 } from '../../lib/analytics';
 import { TrendChart, BarList, Donut, ActivityStrip, Gauge } from '../charts/Charts';
 import {
@@ -27,6 +28,30 @@ const VEHICLE_COLORS = {
 };
 
 const colorAt = (index) => PALETTE[index % PALETTE.length];
+
+/**
+ * The period the report should open on.
+ *
+ * The obvious default — this calendar month — is wrong for a business that
+ * records in arrears, or in the early days of a month before anything has been
+ * logged. It opens on an empty report and looks broken. So: use the current
+ * month when it has activity, otherwise the most recent month that does.
+ */
+function mostRecentDataRange(transactions) {
+  const thisMonth = buildPresets().find((p) => p.key === 'thisMonth')?.range;
+  const { last } = dataExtent(transactions);
+
+  if (!last || !thisMonth) return thisMonth;
+  if (last >= thisMonth.start) return thisMonth;
+
+  const d = parseIsoDate(last);
+  if (!d) return thisMonth;
+
+  return {
+    start: toIsoDate(new Date(d.getFullYear(), d.getMonth(), 1)),
+    end: toIsoDate(new Date(d.getFullYear(), d.getMonth() + 1, 0)),
+  };
+}
 
 /**
  * Plain-language definitions. The point is that a business owner can find out
@@ -93,6 +118,16 @@ export default function Analytics() {
   const [inventory, setInventory] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const appliedDefaultRange = useRef(false);
+
+  // Once, after the first load: if the opening period has nothing in it, move to
+  // the most recent month that does. Never overrides a period the user picked.
+  useEffect(() => {
+    if (appliedDefaultRange.current || loading || transactions.length === 0) return;
+    appliedDefaultRange.current = true;
+    const hasActivity = transactions.some((tx) => tx.date >= range.start && tx.date <= range.end);
+    if (!hasActivity) setRange(mostRecentDataRange(transactions));
+  }, [loading, transactions, range]);
 
   const rangeLabel = describeRange(range);
 

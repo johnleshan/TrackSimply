@@ -5,7 +5,7 @@ import { useAppSettings } from '../../lib/appSettings';
 
 const AccountManager = () => {
   const { user: currentUser } = useAuth();
-  const { settings, setSetting } = useAppSettings();
+  const { settings, setSetting, isShared } = useAppSettings();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -124,7 +124,7 @@ const AccountManager = () => {
             <input
               type="checkbox"
               checked={settings.reportActionsEnabled}
-              onChange={(e) => setSetting('reportActionsEnabled', e.target.checked)}
+              onChange={(e) => { setSetting('reportActionsEnabled', e.target.checked); }}
             />
             <span className="settings-track"><span className="settings-thumb" /></span>
             <span className="settings-text">
@@ -136,13 +136,23 @@ const AccountManager = () => {
             </span>
           </label>
 
-          <p className="settings-caveat">
-            <strong>This setting is stored in this browser only.</strong> It is not saved to the database,
-            so it does not follow you to another device, and it does not change what other users see.
-            It is a convenience preference, not a permission: anyone with developer tools could override
-            it. Genuinely restricting a capability requires server-side enforcement, which needs Row Level
-            Security and real auth tokens &mdash; neither is in place yet.
-          </p>
+          {isShared ? (
+            <p className="settings-caveat">
+              <strong>This setting is shared across the system.</strong>{' '}
+              Turning it on or off applies to every user and every device, and is stored against the
+              business rather than in this browser.
+              <br /><br />
+              It is a switch, not a permission. Row Level Security is not enabled, so the database will
+              accept a change from anyone holding the publishable key. It keeps the option out of the way;
+              it does not keep it out of reach.
+            </p>
+          ) : (
+            <p className="settings-caveat settings-caveat-warn">
+              <strong>Shared storage is not available, so this is saved in this browser only.</strong>{' '}
+              It will not follow you to another device and other users will not see the change.
+              This is expected until the <code>app_settings</code> table exists.
+            </p>
+          )}
         </div>
       )}
 

@@ -1,96 +1,142 @@
 /**
  * Application preferences.
  *
- * Stored in localStorage because the database must not be altered for a UI
- * preference, and there is no settings table to use.
+ * Stored in the `app_settings` table so a change applies to every user and
+ * every device, with localStorage used as an instant cache and as the fallback
+ * when the table is not reachable.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * READ THIS BEFORE RELYING ON IT.
+ * WHAT THIS DOES AND DOES NOT DO.
  *
- * 1. These settings are PER BROWSER, not per account. Switching the toggle on
- *    your machine does not change anything for anyone else, or for you on
- *    another device or browser.
+ * It makes the setting SHARED. A superadmin turning it off hides the report
+ * actions for everyone, on every device, consistently. That is the point.
  *
- * 2. This is NOT a security control. Anyone with developer tools can flip the
- *    value directly. It exists to keep an option out of the way by default, not
- *    to prevent a determined person from using it. If a capability must
- *    genuinely be denied to a user, that has to be enforced server-side, which
- *    requires Row Level Security and a real auth token — neither of which this
- *    app has yet.
+ * It does NOT make it SECURE. Row Level Security is not enabled, so the
+ * publishable key in the browser bundle can write to app_settings directly.
+ * Anyone determined enough can flip the value with developer tools or a single
+ * HTTP request. Treat this as a switch that keeps an option out of the way, not
+ * as a permission system. Real enforcement requires RLS plus a real auth token,
+ * which this app does not have yet.
+ *
+ * Export and print are OFF by default: they write real client records to a file
+ * on disk, which should not happen as a side effect of opening a report.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { useState, useEffect } from 'react';
+import { supabase } from './supabase';
 
 const STORAGE_KEY = 'tracksimply_settings';
+const TABLE = 'app_settings';
 
-/**
- * Export and print are OFF by default: they write real client records to a
- * file on disk, which is not something that should happen as a side effect of
- * opening a report.
- */
 const DEFAULTS = {
   reportActionsEnabled: false,
 };
 
-let cache = null;
+let cache = { ...DEFAULTS };
+let shared = false;
 const listeners = new Set();
 
-function read() {
-  if (cache) return cache;
+function notify() {
+  listeners.forEach((fn) => fn({ ...cache }, shared));
+}
+
+function readLocal() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    cache = raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
+    return raw ? JSON.parse(raw) : {};
   } catch {
-    // Private browsing, or storage disabled. Fall back to defaults rather than
-    // breaking the page.
-    cache = { ...DEFAULTS };
+    return {};
   }
+}
+
+function writeLocal(value) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // Non-fatal: the shared copy is the one that matters.
+  }
+}
+
+/**
+ * Reads the shared settings once per session. Safe to call before the table
+ * exists: a missing table leaves `shared` false and the local copy in charge.
+ */
+export async function loadSettings() {
+  cache = { ...DEFAULTS, ...readLocal() };
+  notify();
+
+  try {
+    const { data, error } = await supabase.from(TABLE).select('key, value');
+    if (error) {
+      shared = false;
+      notify();
+      return cache;
+    }
+    const remote = {};
+    for (const row of data || []) remote[row.key] = row.value;
+    // Shared values win over the local cache.
+    cache = { ...DEFAULTS, ...cache, ...remote };
+    shared = true;
+  } catch {
+    shared = false;
+  }
+
+  notify();
   return cache;
 }
 
-function write(next) {
-  cache = next;
+export async function setSetting(key, value) {
+  // Update locally first so the switch responds immediately.
+  cache = { ...cache, [key]: value };
+  writeLocal(cache);
+  notify();
+
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    const { error } = await supabase
+      .from(TABLE)
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    shared = !error;
   } catch {
-    // Non-fatal: the setting simply will not persist.
+    shared = false;
   }
-  listeners.forEach((fn) => fn(next));
+
+  notify();
+  return shared;
 }
 
 export function getSettings() {
-  return read();
+  return { ...cache };
 }
 
-export function setSetting(key, value) {
-  write({ ...read(), [key]: value });
-}
-
-export function resetSettings() {
-  write({ ...DEFAULTS });
+export function isShared() {
+  return shared;
 }
 
 /** Subscribes to changes, including ones made in another tab. */
 export function useAppSettings() {
-  const [settings, setLocal] = useState(read);
+  const [settings, setSettings] = useState(() => ({ ...cache }));
+  const [isSharedStorage, setIsShared] = useState(shared);
 
   useEffect(() => {
-    const onLocal = (next) => setLocal({ ...next });
-    listeners.add(onLocal);
+    const onChange = (next, sharedNow) => {
+      setSettings(next);
+      setIsShared(sharedNow);
+    };
+    listeners.add(onChange);
 
     const onStorage = (event) => {
       if (event.key !== STORAGE_KEY) return;
-      cache = null;
-      setLocal({ ...read() });
+      cache = { ...cache, ...readLocal() };
+      notify();
     };
     window.addEventListener('storage', onStorage);
 
     return () => {
-      listeners.delete(onLocal);
+      listeners.delete(onChange);
       window.removeEventListener('storage', onStorage);
     };
   }, []);
 
-  return { settings, setSetting, resetSettings };
+  return { settings, setSetting, isShared: isSharedStorage };
 }

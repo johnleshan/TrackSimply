@@ -10,6 +10,7 @@ import InventoryTracker from './components/tools/InventoryTracker';
 import VehicleManagement from './components/tools/VehicleManagement';
 import AccountManager from './components/tools/AccountManager';
 import { useAuth } from './context/AuthContext';
+import { loadSettings } from './lib/appSettings';
 
 const MobileHeader = ({ title, theme, toggleTheme, logout }) => (
   <header className="mobile-header">
@@ -128,6 +129,12 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('tracksimply_theme', theme);
   }, [theme]);
+
+  // Load shared application settings once a user is present, so preferences are
+  // in place before any tool renders.
+  useEffect(() => {
+    if (user) loadSettings();
+  }, [user]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
