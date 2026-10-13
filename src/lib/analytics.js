@@ -24,6 +24,42 @@ const VARIABLE_EXPENSE_CATEGORIES = ['Stock/Inventory', 'Fuel'];
 const UNCATEGORISED = 'Uncategorised';
 
 /* ------------------------------------------------------------------ *
+ * Range resolution
+ * ------------------------------------------------------------------ */
+
+/** First and last dates actually present in the data. */
+export function dataExtent(transactions) {
+  let first = null;
+  let last = null;
+  for (const tx of transactions || []) {
+    const date = parseIsoDate(tx.date);
+    if (!date) continue;
+    const iso = toIsoDate(date);
+    if (!first || iso < first) first = iso;
+    if (!last || iso > last) last = iso;
+  }
+  return { first, last };
+}
+
+/**
+ * Collapses the All Time sentinel to the span the data actually occupies.
+ *
+ * ALL_TIME is 1970-01-01 to 2099-12-31 — a sentinel that predates the app. Used
+ * directly it enumerates roughly 1,560 empty monthly buckets, which makes every
+ * average wrong (a net divided by 130 years of nothing) and renders the trend
+ * chart as one unreadable spike.
+ *
+ * Bounded periods are returned untouched: an owner who selects a window with no
+ * activity in it should see that window, empty.
+ */
+export function resolveAnalysisRange(range, transactions) {
+  if (!isAllTime(range)) return range;
+  const { first, last } = dataExtent(transactions);
+  if (!first || !last) return range;
+  return { start: first, end: last };
+}
+
+/* ------------------------------------------------------------------ *
  * Primitives
  * ------------------------------------------------------------------ */
 

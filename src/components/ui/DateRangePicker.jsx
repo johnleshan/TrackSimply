@@ -5,13 +5,20 @@ import { buildPresets, describeRange, daysInRange, isAllTime } from '../../lib/d
  * Shared period control. Replaces the duplicated "show all time / reset to
  * week" pair, which was the only period choice the app offered — too coarse to
  * analyse anything on.
+ *
+ * `activePresetKey` exists because Analytics resolves the All Time sentinel to
+ * the span the data actually covers. It passes that resolved range in as
+ * `value` so the dates and day count are truthful, while this prop keeps the
+ * All Time button highlighted.
  */
-export default function DateRangePicker({ value, onChange, showCustom = true }) {
+export default function DateRangePicker({ value, onChange, showCustom = true, activePresetKey }) {
   const presets = useMemo(() => buildPresets(), []);
 
-  const activeKey = presets.find(
+  const derivedKey = presets.find(
     (p) => p.range.start === value.start && p.range.end === value.end
   )?.key;
+
+  const highlighted = activePresetKey ?? derivedKey;
 
   const apply = (range) => onChange({ ...range });
 
@@ -34,7 +41,7 @@ export default function DateRangePicker({ value, onChange, showCustom = true }) 
           <button
             key={preset.key}
             type="button"
-            className={`rk-preset ${activeKey === preset.key ? 'rk-preset-active' : ''}`}
+            className={`rk-preset ${highlighted === preset.key ? 'rk-preset-active' : ''}`}
             onClick={() => apply(preset.range)}
           >
             {preset.label}

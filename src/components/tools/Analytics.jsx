@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { buildPresets, describeRange, autoGranularity } from '../../lib/dateRange';
+import { buildPresets, describeRange, autoGranularity, isAllTime } from '../../lib/dateRange';
 import { formatCurrency, formatCompact, formatPercent, formatDate } from '../../lib/format';
 import {
   summarize, profitAndLoss, timeSeries, periodComparison, byCategory,
   budgetAnalytics, debtAnalytics, inventoryAnalytics, fleetAnalytics,
-  breakEven, detectOutliers, topMovers, activityHeatmap,
+  breakEven, detectOutliers, topMovers, activityHeatmap, resolveAnalysisRange,
 } from '../../lib/analytics';
 import { TrendChart, BarList, Donut, ActivityStrip, Gauge } from '../charts/Charts';
 import {
@@ -48,6 +48,13 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
 
   const rangeLabel = describeRange(range);
+
+  // All Time is stored as a 1970-2099 sentinel. Everything below works against
+  // the span the data really covers, so averages and bucket counts stay honest.
+  const effectiveRange = useMemo(
+    () => resolveAnalysisRange(range, transactions),
+    [range, transactions]
+  );
 
   // Scoped identically to the rest of the app: superadmin sees every tenant,
   // everyone else sees only their own rows.
@@ -102,8 +109,10 @@ export default function Analytics() {
   }, [user, fetchAll]);
 
   const report = useMemo(() => {
-    const granularity = autoGranularity(range);
-    const series = timeSeries(transactions, range, granularity);
+    // Every computation below uses the resolved range, never the raw sentinel.
+    const analysisRange = resolveAnalysisRange(range, transactions);
+    const granularity = autoGranularity(analysisRange);
+    const series = timeSeries(transactions, analysisRange, granularity);
 
     const formatBucketLabel = (date) => {
       const d = new Date(`${date}T00:00:00`);
@@ -113,22 +122,23 @@ export default function Analytics() {
     };
 
     return {
+      analysisRange,
       granularity,
       series,
       labels: series.map((point) => formatBucketLabel(point.date)),
-      pnl: profitAndLoss(transactions, range),
-      totals: summarize(transactions, range),
-      comparison: periodComparison(transactions, range),
-      incomeLines: byCategory(transactions, range, 'income'),
-      expenseLines: byCategory(transactions, range, 'expense'),
-      budgets: budgetAnalytics(budgets, transactions, range),
-      debts: debtAnalytics(debts, transactions, range),
-      inventory: inventoryAnalytics(inventory, transactions, range),
+      pnl: profitAndLoss(transactions, analysisRange),
+      totals: summarize(transactions, analysisRange),
+      comparison: periodComparison(transactions, analysisRange),
+      incomeLines: byCategory(transactions, analysisRange, 'income'),
+      expenseLines: byCategory(transactions, analysisRange, 'expense'),
+      budgets: budgetAnalytics(budgets, transactions, analysisRange),
+      debts: debtAnalytics(debts, transactions, analysisRange),
+      inventory: inventoryAnalytics(inventory, transactions, analysisRange),
       fleet: fleetAnalytics(vehicles, transactions),
-      breakEven: breakEven(transactions, range),
+      breakEven: breakEven(transactions, analysisRange),
       outliers: detectOutliers(transactions),
-      movers: topMovers(transactions, range),
-      activity: activityHeatmap(transactions, range),
+      movers: topMovers(transactions, analysisRange),
+      activity: activityHeatmap(transactions, analysisRange),
       trendIncome: series.map((p) => p.income),
       trendExpense: series.map((p) => p.expense),
       trendCumulative: series.map((p) => p.cumulative),
@@ -212,7 +222,11 @@ export default function Analytics() {
             </>
           }
         >
-          <DateRangePicker value={range} onChange={setRange} />
+          <DateRangePicker
+            value={effectiveRange}
+            onChange={setRange}
+            activePresetKey={isAllTime(range) ? 'allTime' : undefined}
+          />
         </Panel>
 
         {!hasActivity ? (

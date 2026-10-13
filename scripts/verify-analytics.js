@@ -12,6 +12,7 @@ import {
   summarize, byCategory, profitAndLoss, timeSeries, periodComparison, previousRange,
   amortize, debtAnalytics, budgetAnalytics, inventoryAnalytics, fleetAnalytics,
   breakEven, detectOutliers, normalizeType, filterRange, movingAverage,
+  dataExtent, resolveAnalysisRange,
 } from '../src/lib/analytics.js';
 import { buildPresets, autoGranularity, daysInRange, enumerateBuckets, isAllTime } from '../src/lib/dateRange.js';
 import { formatCompact, formatCurrency, parseIsoDate, toIsoDate } from '../src/lib/format.js';
@@ -390,6 +391,27 @@ check('no complete month to compare', detectOutliers(
   [tx({ amount: 100, type: 'Expense', category: 'X', date: '2026-04-02' })],
   { now: new Date(2026, 3, 15) }
 ).length, 0);
+
+console.error('\nrange resolution');
+const spread = [
+  tx({ date: '2026-03-01' }),
+  tx({ date: '2026-01-15' }),
+  tx({ date: '2026-06-20' }),
+];
+check('data extent', dataExtent(spread), { first: '2026-01-15', last: '2026-06-20' });
+check('empty data has no extent', dataExtent([]), { first: null, last: null });
+
+const allTime = { start: '1970-01-01', end: '2099-12-31' };
+check('all time collapses to the data span', resolveAnalysisRange(allTime, spread), {
+  start: '2026-01-15',
+  end: '2026-06-20',
+});
+check('all time with no data is left alone', resolveAnalysisRange(allTime, []), allTime);
+check('bounded range is untouched', resolveAnalysisRange(range, spread), range);
+
+const collapsed = timeSeries(spread, resolveAnalysisRange(allTime, spread), autoGranularity(resolveAnalysisRange(allTime, spread)));
+truthy('collapsed all time yields a readable number of buckets', collapsed.length < 40 && collapsed.length > 0);
+check('collapsed buckets only span the data', collapsed.at(-1).date, '2026-06-01');
 
 /* ---------------------------------------------------------------- */
 console.error('\nformatting');

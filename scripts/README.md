@@ -4,6 +4,47 @@ Production tooling. Everything in `scratch/` is throwaway debugging that must
 never be run against the live database — several of those files print plaintext
 passwords to the console.
 
+## Running the app locally
+
+Two modes. Pick deliberately.
+
+### Demo mode — `npm run dev:demo`
+
+Serves fixture data from the Vite dev server (`scripts/dev-mock-plugin.js`).
+**No Supabase project is contacted at any point**, so it is safe to click
+through, add records and delete them freely.
+
+Open <http://localhost:5173> and sign in with `demo_owner` / `demo`
+(a `demo_staff` / `demo` account exists too, to show tenant separation).
+
+The mock is a Vite plugin declaring `apply: 'serve'`, so it is excluded from
+`npm run build` and cannot reach production. `.env.demo` points the Supabase
+client at the dev server itself, which is how the requests get intercepted.
+
+### Live mode — `npm run dev`
+
+Connects to the real project. Put the real values in `.env.development.local`
+(gitignored):
+
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon key>
+```
+
+> **Anything you do in live mode writes to the live database.**
+> There is no read-only mode and no confirmation prompt. Because Row Level
+> Security is not enabled, the anon key can read and write every row. Use demo
+> mode unless you specifically intend to touch client data.
+
+To check connectivity without the UI:
+
+```
+node scripts/check-connection.cjs
+```
+
+This is read-only. It reports per-table row counts and confirms the project is
+reachable.
+
 ## `snapshot-data.cjs`
 
 Captures a fingerprint of every row in every table, so you can prove that a
