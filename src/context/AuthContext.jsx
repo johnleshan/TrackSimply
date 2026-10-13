@@ -7,18 +7,77 @@ export const useAuth = () => useContext(AuthContext);
 
 const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
+const SESSION_KEY = 'tracksimply_session';
+
+/**
+ * Session persistence is deliberately asymmetric.
+ *
+ * Only a superadmin is remembered across browser restarts. Staff sign in for
+ * the session and are forgotten when the tab closes.
+ *
+ * The reason is that accounting and inventory screens are typically used on a
+ * shared front-desk machine. A session that survives closing the browser means
+ * the next person to open it is already inside the business's books. Staff can
+ * still refresh without being thrown out, because their session is held in
+ * sessionStorage rather than dropped entirely.
+ *
+ * This is a safety default, not a security control: it changes where a session
+ * is kept, and anyone with developer tools can read either store. It is not a
+ * substitute for real credentials, and it does nothing about the fact that two
+ * accounts currently share the password 'password'.
+ */
+function readSession() {
+  try {
+    const persistent = window.localStorage.getItem(SESSION_KEY);
+    if (persistent) {
+      const parsed = JSON.parse(persistent);
+      if (parsed && parsed.role !== 'superadmin') {
+        // A staff session saved before this rule existed. Demote it rather than
+        // leaving it remembered.
+        window.localStorage.removeItem(SESSION_KEY);
+        window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+      }
+      return parsed;
+    }
+
+    const tabSession = window.sessionStorage.getItem(SESSION_KEY);
+    return tabSession ? JSON.parse(tabSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(sessionUser) {
+  try {
+    if (!sessionUser) {
+      window.localStorage.removeItem(SESSION_KEY);
+      window.sessionStorage.removeItem(SESSION_KEY);
+      return;
+    }
+
+    if (sessionUser.role === 'superadmin') {
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+      window.sessionStorage.removeItem(SESSION_KEY);
+      return;
+    }
+
+    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+    window.localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Storage unavailable (private browsing). The session simply will not
+    // survive a reload, which is the safe direction to fail in.
+  }
+}
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const savedSession = localStorage.getItem('tracksimply_session');
-    return savedSession ? JSON.parse(savedSession) : null;
-  });
+  const [user, setUser] = useState(readSession);
 
   const [loading, setLoading] = useState(true);
   const logoutTimerRef = useRef(null);
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('tracksimply_session');
+    persistSession(null);
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
   }, []);
 
@@ -88,13 +147,10 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, resetLogoutTimer]);
 
-  // Sync session to LocalStorage (for fast initial load)
+  // Persist the session. A superadmin is remembered across restarts; everyone
+  // else is held for the tab only. See persistSession for why.
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('tracksimply_session', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('tracksimply_session');
-    }
+    persistSession(user);
   }, [user]);
 
   const login = async (username, password) => {
