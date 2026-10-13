@@ -69,7 +69,12 @@ const DashboardOverview = ({ onSelectTool }) => {
       if (user.role !== 'superadmin') budQuery = budQuery.eq('user_id', user.id);
       const { data: budData } = await budQuery;
       let totalB = 0, actualB = 0;
-      budData?.forEach(b => { totalB += Number(b.budget); actualB += Number(b.actual); });
+      // Coerce per value: a single NULL or non-numeric amount would otherwise
+      // poison the total to NaN and silently report "0% utilized".
+      budData?.forEach(b => {
+        totalB += Number(b.budget) || 0;
+        actualB += Number(b.actual) || 0;
+      });
       
       setStats({ 
         totalDebt, 

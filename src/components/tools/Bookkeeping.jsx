@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { runLegacyMigration } from '../../lib/legacyMigration';
 
 const Bookkeeping = () => {
   const { user } = useAuth();
@@ -63,25 +64,42 @@ const Bookkeeping = () => {
 
   useEffect(() => {
     const initData = async () => {
-      // One-time migration check
+      // Legacy browser storage is imported at most once per user, ever. See
+      // lib/legacyMigration.js — the previous "remote count is 0" guard
+      // resurrected deleted records on every subsequent login.
       const localBus = JSON.parse(localStorage.getItem('tracksimply_transactions') || '[]');
       const localVeh = JSON.parse(localStorage.getItem('tracksimply_vehicle_transactions') || '[]');
-      
-      const { data: remoteCount } = await supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-      
-      if (remoteCount === 0 && (localBus.length > 0 || localVeh.length > 0)) {
-        console.log('Migrating local transactions to cloud...');
+
+      if (localBus.length > 0 || localVeh.length > 0) {
         const busToUpload = localBus.map(t => ({
-          user_id: user.id, date: t.date, description: t.description, amount: t.amount, 
+          user_id: user.id, date: t.date, description: t.description, amount: t.amount,
           type: t.type, category: t.category, source: 'business'
         }));
         const vehToUpload = localVeh.map(t => ({
-          user_id: user.id, date: t.date, description: t.description, amount: t.amount, 
+          user_id: user.id, date: t.date, description: t.description, amount: t.amount,
           type: t.type, category: t.category, source: 'vehicle', vehicle_reg: t.vehicleReg
         }));
-        
-        await supabase.from('transactions').insert([...busToUpload, ...vehToUpload]);
+
+        await runLegacyMigration(
+          'transactions',
+          user.id,
+          async () => {
+            const { data, error } = await supabase
+              .from('transactions')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+            if (error) throw error;
+            return data?.count ?? 0;
+          },
+          async () => {
+            const { error } = await supabase
+              .from('transactions')
+              .insert([...busToUpload, ...vehToUpload]);
+            if (error) throw error;
+          }
+        );
       }
+
       fetchTransactions();
     };
 
@@ -144,7 +162,8 @@ const Bookkeeping = () => {
         const { error: invError } = await supabase
           .from('inventory')
           .update({ stock: newStock })
-          .eq('name', matchedItem.name);
+          .eq('id', matchedItem.id)
+          .eq('user_id', user.id);
           
         if (invError) {
           console.error('Inventory Sync Error:', invError);
@@ -202,10 +221,18 @@ const Bookkeeping = () => {
       const delta = tx.type === 'Income' ? qty : -qty;
       const currentStock = Number(item.stock) || 0;
       const newStock = Math.max(0, currentStock + delta);
-      await supabase.from('inventory').update({ stock: newStock }).eq('name', item.name);
+      await supabase.from('inventory').update({ stock: newStock }).eq('id', item.id).eq('user_id', user.id);
     }
 
-    const { error } = await supabase.from('transactions').delete().eq('id', tx.id);
+    // Delete scope must mirror read scope (see fetchTransactions): a normal user
+    // may only delete their own rows, a superadmin may delete any. Previously this
+    // query was unscoped, so any authenticated client could delete any transaction
+    // by id. This is defence in depth only — the real boundary is Row Level
+    // Security, which is not yet enabled.
+    let deleteQuery = supabase.from('transactions').delete().eq('id', tx.id);
+    if (user.role !== 'superadmin') deleteQuery = deleteQuery.eq('user_id', user.id);
+
+    const { error } = await deleteQuery;
     if (!error) fetchTransactions();
   };
 

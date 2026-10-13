@@ -94,9 +94,21 @@ const MagicAI = ({ activeTool }) => {
     setInput('');
     setIsThinking(true);
 
-    const response = await chatWithAI([...messages, userMessage], user.id);
-    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    setIsThinking(false);
+    // Without try/finally, any rejection here leaves the composer permanently
+    // disabled — the business could not ask the assistant anything again
+    // without reloading.
+    try {
+      const response = await chatWithAI([...messages, userMessage], user.id);
+      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error) {
+      console.error('AI request failed:', error);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: 'Something went wrong reaching the assistant. Please try again.' },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   // Improved Message Formatter (strips extra MD chars and adds basic formatting)

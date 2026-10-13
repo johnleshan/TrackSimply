@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { runLegacyMigration } from '../../lib/legacyMigration';
 
 const InventoryTracker = () => {
   const { user } = useAuth();
@@ -19,15 +20,29 @@ const InventoryTracker = () => {
 
   useEffect(() => {
     const initData = async () => {
-      const { data: remoteCount } = await supabase.from('inventory').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-      if (remoteCount === 0) {
-        const local = JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]');
-        if (local.length > 0) {
-          const toUpload = local.map(i => ({
-            user_id: user.id, name: i.name, stock: i.stock, reorder: i.reorder, price: i.price
-          }));
-          await supabase.from('inventory').insert(toUpload);
-        }
+      // Legacy browser storage is imported at most once per user, ever.
+      // See lib/legacyMigration.js.
+      const local = JSON.parse(localStorage.getItem('tracksimply_inventory') || '[]');
+      if (local.length > 0) {
+        const toUpload = local.map(i => ({
+          user_id: user.id, name: i.name, stock: i.stock, reorder: i.reorder, price: i.price
+        }));
+        await runLegacyMigration(
+          'inventory',
+          user.id,
+          async () => {
+            const { data, error } = await supabase
+              .from('inventory')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+            if (error) throw error;
+            return data?.count ?? 0;
+          },
+          async () => {
+            const { error } = await supabase.from('inventory').insert(toUpload);
+            if (error) throw error;
+          }
+        );
       }
       fetchItems();
     };
@@ -90,11 +105,13 @@ const InventoryTracker = () => {
   const handleStockAdj = async (item, delta) => {
     const currentStock = Number(item.stock) || 0;
     const newStock = Math.max(0, currentStock + delta);
-    
+
+    // Scoped by primary key, not by name. Two products sharing a name would
+    // previously have had their stock adjusted as if they were one item.
     const { error } = await supabase
       .from('inventory')
       .update({ stock: newStock })
-      .eq('name', item.name)
+      .eq('id', item.id)
       .eq('user_id', user.id);
     
     if (!error) {
@@ -118,8 +135,8 @@ const InventoryTracker = () => {
   };
 
 
-  const handleRemoveItem = async (itemName) => {
-    const { error } = await supabase.from('inventory').delete().eq('name', itemName).eq('user_id', user.id);
+  const handleRemoveItem = async (item) => {
+    const { error } = await supabase.from('inventory').delete().eq('id', item.id).eq('user_id', user.id);
     if (!error) {
       alert('Item removed.');
       fetchItems();
@@ -192,7 +209,14 @@ const InventoryTracker = () => {
                   </td>
                   <td data-label="Actions">
                     {['admin', 'superadmin'].includes(user?.role) && (
-                      <button onClick={() => handleRemoveItem(item.name)} className="btn-action danger">Remove</button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Remove "${item.name}" from inventory? This cannot be undone.`)) {
+                            handleRemoveItem(item);
+                          }
+                        }}
+                        className="btn-action danger"
+                      >Remove</button>
                     )}
                   </td>
                 </tr>

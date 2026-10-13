@@ -53,7 +53,14 @@ const VehicleManagement = () => {
     }
 
     if (confirm('Are you sure you want to delete this vehicle?')) {
-      const { error } = await supabase.from('vehicles').delete().eq('id', id);
+      // Matches the read scope in fetchVehicles, which is always owner-scoped
+      // (this tool has no superadmin bypass). Previously the delete was
+      // unscoped, so any admin could remove another tenant's vehicle by id.
+      const { error } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
       if (!error) fetchVehicles();
     }
   };

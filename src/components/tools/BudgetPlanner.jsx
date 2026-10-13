@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { runLegacyMigration } from '../../lib/legacyMigration';
 
 const BudgetPlanner = () => {
   const { user } = useAuth();
@@ -19,15 +20,29 @@ const BudgetPlanner = () => {
 
   useEffect(() => {
     const initData = async () => {
-      const { data: remoteCount } = await supabase.from('budgets').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-      if (remoteCount === 0) {
-        const local = JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]');
-        if (local.length > 0) {
-          const toUpload = local.map(b => ({
-            user_id: user.id, category: b.category, budget: b.budget, actual: b.actual
-          }));
-          await supabase.from('budgets').insert(toUpload);
-        }
+      // Legacy browser storage is imported at most once per user, ever.
+      // See lib/legacyMigration.js.
+      const local = JSON.parse(localStorage.getItem('tracksimply_budgets') || '[]');
+      if (local.length > 0) {
+        const toUpload = local.map(b => ({
+          user_id: user.id, category: b.category, budget: b.budget, actual: b.actual
+        }));
+        await runLegacyMigration(
+          'budgets',
+          user.id,
+          async () => {
+            const { data, error } = await supabase
+              .from('budgets')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+            if (error) throw error;
+            return data?.count ?? 0;
+          },
+          async () => {
+            const { error } = await supabase.from('budgets').insert(toUpload);
+            if (error) throw error;
+          }
+        );
       }
       fetchBudgets();
     };
@@ -180,13 +195,15 @@ const BudgetPlanner = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{ 
-                          width: `${Math.min((Number(b.actual) / Number(b.budget)) * 100, 100)}%`, 
+                          width: `${Number(b.budget) > 0 ? Math.min(((Number(b.actual) || 0) / Number(b.budget)) * 100, 100) : 0}%`, 
                           height: '100%', 
                           background: Number(b.actual) > Number(b.budget) ? 'var(--danger)' : 'var(--accent-teal)',
                           transition: 'width 0.3s'
                         }} />
                       </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{((Number(b.actual) / Number(b.budget)) * 100).toFixed(0)}%</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{Number(b.budget) > 0
+                        ? Math.min(((Number(b.actual) || 0) / Number(b.budget)) * 100, 100).toFixed(0)
+                        : '—'}%</span>
                     </div>
                   </td>
                   <td data-label="Actions">

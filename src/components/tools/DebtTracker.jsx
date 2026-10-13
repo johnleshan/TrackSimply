@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { runLegacyMigration } from '../../lib/legacyMigration';
 
 const DebtTracker = () => {
   const { user } = useAuth();
@@ -19,15 +20,29 @@ const DebtTracker = () => {
 
   useEffect(() => {
     const initData = async () => {
-      const { data: remoteCount } = await supabase.from('debts').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-      if (remoteCount === 0) {
-        const local = JSON.parse(localStorage.getItem('tracksimply_debts') || '[]');
-        if (local.length > 0) {
-          const toUpload = local.map(d => ({
-            user_id: user.id, name: d.name, total: d.total, interest: d.interest, min_payment: d.minPayment
-          }));
-          await supabase.from('debts').insert(toUpload);
-        }
+      // Legacy browser storage is imported at most once per user, ever.
+      // See lib/legacyMigration.js.
+      const local = JSON.parse(localStorage.getItem('tracksimply_debts') || '[]');
+      if (local.length > 0) {
+        const toUpload = local.map(d => ({
+          user_id: user.id, name: d.name, total: d.total, interest: d.interest, min_payment: d.minPayment
+        }));
+        await runLegacyMigration(
+          'debts',
+          user.id,
+          async () => {
+            const { data, error } = await supabase
+              .from('debts')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+            if (error) throw error;
+            return data?.count ?? 0;
+          },
+          async () => {
+            const { error } = await supabase.from('debts').insert(toUpload);
+            if (error) throw error;
+          }
+        );
       }
       fetchDebts();
     };
