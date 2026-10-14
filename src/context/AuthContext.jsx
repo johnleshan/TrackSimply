@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { accountStatus, suspensionMessage } from '../lib/accountStatus';
 
 const AuthContext = createContext();
 
@@ -169,8 +170,17 @@ export const AuthProvider = ({ children }) => {
 
       console.log('Login successful for:', username);
 
-      if (!data.active) {
-        return { success: false, reason: 'This account has been deactivated by an admin.' };
+      /* Deactivation and suspension are checked before the session is created.
+         Both are enforced here rather than in the screen, so a suspended user
+         cannot reach the app by any route that signs in. */
+      const status = accountStatus(data);
+
+      if (status.key === 'inactive') {
+        return { success: false, reason: 'This account has been deactivated by an administrator.' };
+      }
+
+      if (status.key === 'suspended') {
+        return { success: false, reason: suspensionMessage(status) };
       }
 
       const sessionUser = { id: data.id, role: data.role, username: data.username };

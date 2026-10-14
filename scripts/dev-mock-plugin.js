@@ -23,9 +23,31 @@ function buildFixtures() {
   counter = 0;
   const rows = { site_users: [], transactions: [], debts: [], budgets: [], inventory: [], vehicles: [] };
 
+  // One account in each state, so the table shows what active, suspended and
+  // deactivated actually look like without having to create them first.
   rows.site_users = [
-    { id: OWNER, username: 'demo_owner', password: 'demo', role: 'superadmin', active: true, created_at: iso(-400) },
-    { id: STAFF, username: 'demo_staff', password: 'demo', role: 'user', active: true, created_at: iso(-380) },
+    {
+      id: OWNER, username: 'demo_owner', password: 'demo', role: 'superadmin',
+      active: true, created_at: iso(-400),
+      suspended_at: null, suspended_until: null, suspend_reason: null,
+    },
+    {
+      id: STAFF, username: 'demo_staff', password: 'demo', role: 'user',
+      active: true, created_at: iso(-380),
+      suspended_at: null, suspended_until: null, suspend_reason: null,
+    },
+    {
+      id: '33333333-3333-3333-3333-333333333333', username: 'demo_suspended', password: 'demo',
+      role: 'user', active: true, created_at: iso(-200),
+      suspended_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      suspended_until: new Date(Date.now() + 5 * 86400000).toISOString(),
+      suspend_reason: 'Awaiting payment confirmation',
+    },
+    {
+      id: '44444444-4444-4444-4444-444444444444', username: 'demo_inactive', password: 'demo',
+      role: 'user', active: false, created_at: iso(-150),
+      suspended_at: null, suspended_until: null, suspend_reason: null,
+    },
   ];
 
   const tx = (userId, offset, description, amount, type, category, extra = {}) =>
@@ -163,7 +185,7 @@ function mockPlugin() {
     name: 'tracksimply-dev-mock',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+      server.middlewares.use(async (req, res, next) => {
         const rawUrl = req.url || '';
         if (!rawUrl.startsWith('/rest/v1/') && !rawUrl.startsWith('/auth/v1/')) return next();
 
@@ -202,7 +224,60 @@ function mockPlugin() {
           server._mockSeededAt = Date.now();
         }
 
-        const rows = allRows ? applyFilters(allRows, parsed.searchParams) : [];
+        const sendJson = (payload, status = 200) => {
+          res.statusCode = status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(payload));
+        };
+
+        /* Writes are implemented in memory so features that mutate records —
+           suspending an account, editing a user — can be exercised end to end
+           in demo mode. Demo mode is the only safe place to test a write: the
+           dev:live guard blocks mutations against the real database, so without
+           this there would be no way to verify a write path at all. */
+        if (!allRows) {
+          return sendJson([]);
+        }
+
+        const readBody = () => new Promise((resolve) => {
+          let raw = '';
+          req.on('data', (chunk) => { raw += chunk; });
+          req.on('end', () => {
+            try { resolve(raw ? JSON.parse(raw) : {}); } catch { resolve({}); }
+          });
+        });
+
+        if (req.method === 'PATCH' || req.method === 'PUT') {
+          const patch = await readBody();
+          const targets = applyFilters(allRows, parsed.searchParams);
+          const updated = [];
+          for (const row of targets) {
+            Object.assign(row, patch);
+            updated.push(row);
+          }
+          return sendJson(updated);
+        }
+
+        if (req.method === 'POST') {
+          const body = await readBody();
+          const incoming = Array.isArray(body) ? body : [body];
+          const created = incoming.map((row) => ({
+            id: `demo-${Date.now()}-${allRows.length}`,
+            created_at: new Date().toISOString(),
+            ...row,
+          }));
+          allRows.push(...created);
+          return sendJson(created, 201);
+        }
+
+        if (req.method === 'DELETE') {
+          const targets = new Set(applyFilters(allRows, parsed.searchParams));
+          const kept = allRows.filter((row) => !targets.has(row));
+          fixtures[table] = kept;
+          return sendJson([]);
+        }
+
+        const rows = applyFilters(allRows, parsed.searchParams);
         const wantsSingle = (req.headers.accept || '').includes('vnd.pgrst.object');
 
         res.setHeader('Content-Range', `0-${Math.max(rows.length - 1, 0)}/*`);

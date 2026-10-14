@@ -1,7 +1,129 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useAppSettings } from '../../lib/appSettings';
+import {
+  accountStatus, suspendUntil, suspensionRemaining, validateReason,
+  SUSPENSION_PRESETS, formatDateTime,
+} from '../../lib/accountStatus';
+
+/* Inline SVG. The previous eye emoji is a zero-width-joiner sequence that
+   renders as a different picture, or an empty box, depending on the platform. */
+const EyeIcon = ({ off }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    {off ? (
+      <>
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </>
+    ) : (
+      <>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    )}
+  </svg>
+);
+
+const STATUS_BADGE = { active: 'badge-success', suspended: 'badge-warning', inactive: 'badge-danger' };
+
+/* ------------------------------------------------------------------ *
+ * Suspend dialog
+ * ------------------------------------------------------------------ */
+
+function SuspendDialog({ user, onCancel, onConfirm, saving, error }) {
+  const [reason, setReason] = useState('');
+  const [preset, setPreset] = useState('1w');
+  const reasonRef = useRef(null);
+
+  useEffect(() => { reasonRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !saving) onCancel(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onCancel, saving]);
+
+  const chosen = SUSPENSION_PRESETS.find((p) => p.key === preset);
+  const preview = suspendUntil(preset);
+  const check = validateReason(reason);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!check.ok) return;
+    onConfirm(reason, preset);
+  };
+
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onCancel(); }}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="suspend-title">
+        <div className="modal-head">
+          <h3 id="suspend-title">Suspend {user.username}</h3>
+          <p>
+            They will be unable to sign in until the suspension ends or is lifted. Their records
+            are untouched.
+          </p>
+        </div>
+
+        <form onSubmit={submit} className="modal-body">
+          <label className="modal-label" htmlFor="suspend-reason">
+            Reason <span className="modal-optional">(shown to the user, optional)</span>
+          </label>
+          <input
+            id="suspend-reason"
+            ref={reasonRef}
+            type="text"
+            className="modal-input"
+            placeholder="e.g. Awaiting payment confirmation"
+            value={reason}
+            maxLength={240}
+            onChange={(e) => setReason(e.target.value)}
+            disabled={saving}
+          />
+          {!check.ok && <p className="modal-error">{check.error}</p>}
+
+          <span className="modal-label">Duration</span>
+          <div className="modal-presets">
+            {SUSPENSION_PRESETS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                className={`modal-preset ${preset === p.key ? 'is-active' : ''}`}
+                aria-pressed={preset === p.key}
+                onClick={() => setPreset(p.key)}
+                disabled={saving}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="modal-note">
+            {chosen?.hours === null
+              ? 'Lifts only when an administrator lifts it.'
+              : `Sign-in returns automatically on ${formatDateTime(preview)}.`}
+          </p>
+
+          {error && <p className="modal-error">{error}</p>}
+
+          <div className="modal-actions">
+            <button type="button" className="btn-action" onClick={onCancel} disabled={saving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-action danger" disabled={saving || !check.ok}>
+              {saving ? 'Suspending…' : 'Suspend account'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Account manager
+ * ------------------------------------------------------------------ */
 
 const AccountManager = () => {
   const { user: currentUser } = useAuth();
@@ -13,13 +135,19 @@ const AccountManager = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
+  const [suspendTarget, setSuspendTarget] = useState(null);
+  const [suspendSaving, setSuspendSaving] = useState(false);
+  const [suspendError, setSuspendError] = useState('');
+
+  const isSuperadmin = currentUser?.role === 'superadmin';
+
   const fetchUsers = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('site_users')
       .select('*')
       .order('created_at', { ascending: true });
-    
+
     if (!error && data) setUsers(data);
     setLoading(false);
   };
@@ -29,21 +157,27 @@ const AccountManager = () => {
   }, []);
 
   // Stealth Filtering: Admins don't see superadmins
-  const visibleUsers = users.filter(u => {
+  const visibleUsers = users.filter((u) => {
     if (currentUser?.role === 'admin' && u.role === 'superadmin') return false;
     return true;
   });
 
+  /* An admin cannot act on another admin, and nobody can act on a superadmin.
+     Suspension is superadmin-only, which is enforced by not rendering the
+     action at all rather than by a check that could be skipped. */
+  const canAdminister = (target) =>
+    target.role !== 'superadmin' && !(currentUser?.role === 'admin' && target.role === 'admin');
+
   const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUser.username || !newUser.password) return;
-    
+
     if (editingId) {
       const { error } = await supabase
         .from('site_users')
         .update({ username: newUser.username, password: newUser.password, role: newUser.role })
         .eq('id', editingId);
-      
+
       if (!error) {
         setEditingId(null);
         fetchUsers();
@@ -52,7 +186,7 @@ const AccountManager = () => {
       const { error } = await supabase
         .from('site_users')
         .insert([{ ...newUser, active: true }]);
-      
+
       if (!error) fetchUsers();
     }
     setNewUser({ username: '', password: '', role: 'user' });
@@ -60,7 +194,6 @@ const AccountManager = () => {
   };
 
   const handleToggleStatus = async (user) => {
-    // Hierarchy Check
     if (user.role === 'superadmin') {
       alert('Super Admin accounts cannot be deactivated.');
       return;
@@ -74,7 +207,7 @@ const AccountManager = () => {
       .from('site_users')
       .update({ active: !user.active })
       .eq('id', user.id);
-    
+
     if (!error) fetchUsers();
   };
 
@@ -84,7 +217,6 @@ const AccountManager = () => {
   };
 
   const handleDelete = async (user) => {
-    // Hierarchy Check
     if (user.role === 'superadmin') {
       alert('Super Admin accounts cannot be deleted.');
       return;
@@ -94,15 +226,59 @@ const AccountManager = () => {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete ${user.username}?`)) {
+    if (confirm(`Are you sure you want to delete ${user.username}? This cannot be undone.`)) {
       const { error } = await supabase
         .from('site_users')
         .delete()
         .eq('id', user.id);
-      
+
       if (!error) fetchUsers();
     }
   };
+
+  const applySuspension = async (reason, preset) => {
+    if (!suspendTarget) return;
+    setSuspendSaving(true);
+    setSuspendError('');
+
+    const check = validateReason(reason);
+    const { error } = await supabase
+      .from('site_users')
+      .update({
+        suspended_at: new Date().toISOString(),
+        suspended_until: suspendUntil(preset),
+        suspend_reason: check.value,
+      })
+      .eq('id', suspendTarget.id);
+
+    setSuspendSaving(false);
+
+    if (error) {
+      // 42703 / PGRST204: the column is absent, which means migration 0002 has
+      // not been applied. Say so plainly instead of reporting a generic failure.
+      const missingColumn = error.code === '42703' || error.code === 'PGRST204';
+      setSuspendError(missingColumn
+        ? 'The suspension columns do not exist yet. Apply supabase/migrations/0002_user_suspension.sql, then try again.'
+        : `Could not suspend the account: ${error.message || 'unknown error'}`);
+      return;
+    }
+
+    setSuspendTarget(null);
+    fetchUsers();
+  };
+
+  const liftSuspension = async (user) => {
+    if (!confirm(`Lift the suspension on ${user.username}? They will be able to sign in immediately.`)) return;
+
+    const { error } = await supabase
+      .from('site_users')
+      .update({ suspended_at: null, suspended_until: null, suspend_reason: null })
+      .eq('id', user.id);
+
+    if (!error) fetchUsers();
+  };
+
+  const now = new Date();
 
   return (
     <div className="tool-view">
@@ -113,7 +289,7 @@ const AccountManager = () => {
       </div>
 
       {/* Superadmin only. Applies to this browser, not the whole system. */}
-      {currentUser?.role === 'superadmin' && (
+      {isSuperadmin && (
         <div className="card" style={{ marginBottom: '25px' }}>
           <h3>Application Settings</h3>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginTop: '6px' }}>
@@ -161,43 +337,44 @@ const AccountManager = () => {
         <form onSubmit={handleAddUser} className="grid-form" style={{ gap: '15px', marginTop: '15px' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Username</label>
-            <input 
-              type="text" 
-              placeholder="Username" 
-              value={newUser.username} 
-              onChange={e => setNewUser({...newUser, username: e.target.value})} 
-              style={{ width: '100%' }} 
+            <input
+              type="text"
+              placeholder="Username"
+              value={newUser.username}
+              onChange={e => setNewUser({ ...newUser, username: e.target.value })}
+              style={{ width: '100%' }}
             />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Password</label>
             <div className="password-input-wrapper">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Password" 
-                value={newUser.password} 
-                onChange={e => setNewUser({...newUser, password: e.target.value})} 
-                style={{ width: '100%' }} 
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={newUser.password}
+                onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                style={{ width: '100%' }}
               />
-              <button 
-                type="button" 
-                className="reveal-btn" 
+              <button
+                type="button"
+                className="reveal-btn"
                 onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? "👁️" : "👁️‍🗨️"}
+                <EyeIcon off={showPassword} />
               </button>
             </div>
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Role</label>
-            <select 
-              value={newUser.role} 
-              onChange={e => setNewUser({...newUser, role: e.target.value})} 
+            <select
+              value={newUser.role}
+              onChange={e => setNewUser({ ...newUser, role: e.target.value })}
               style={{ width: '100%' }}
             >
               <option value="user">User</option>
-              {currentUser?.role === 'superadmin' && <option value="admin">Admin</option>}
+              {isSuperadmin && <option value="admin">Admin</option>}
             </select>
           </div>
           <div style={{ alignSelf: 'end' }}>
@@ -221,52 +398,93 @@ const AccountManager = () => {
               </tr>
             </thead>
             <tbody>
-              {visibleUsers.map(u => (
-                <tr key={u.id}>
-                  <td data-label="Username" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{u.username}</td>
-                  <td data-label="Role">
-                    <span className={`badge ${u.role === 'superadmin' ? 'badge-purple' : u.role === 'admin' ? 'badge-info' : ''}`}>
-                      {u.role.toUpperCase()}
-                    </span>
-                  </td>
-                  <td data-label="Status">
-                     <span className={`badge ${u.active ? 'badge-success' : 'badge-danger'}`}>
-                      {u.active ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                  </td>
-                  <td data-label="Actions">
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {u.role !== 'superadmin' && !(currentUser?.role === 'admin' && u.role === 'admin') && (
-                        <>
-                          <button 
-                            onClick={() => handleToggleStatus(u)} 
-                            className={`btn-action ${u.active ? 'danger' : ''}`}
-                            title={u.active ? 'Deactivate Account' : 'Activate Account'}
-                          >
-                            {u.active ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button 
-                            onClick={() => handleEdit(u)} 
-                            className="btn-action"
-                          >
-                            Edit
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(u)} 
-                            className="btn-action danger"
-                          >
-                            Delete
-                          </button>
-                        </>
+              {visibleUsers.map((u) => {
+                const status = accountStatus(u, now);
+                const administrable = canAdminister(u);
+                return (
+                  <tr key={u.id}>
+                    <td data-label="Username" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{u.username}</td>
+                    <td data-label="Role">
+                      <span className={`badge ${u.role === 'superadmin' ? 'badge-purple' : u.role === 'admin' ? 'badge-info' : ''}`}>
+                        {u.role.toUpperCase()}
+                      </span>
+                    </td>
+                    <td data-label="Status">
+                      <span className={`badge ${STATUS_BADGE[status.key] || ''}`}>
+                        {status.label.toUpperCase()}
+                      </span>
+                      {status.key === 'suspended' && (
+                        <div className="status-detail">
+                          {suspensionRemaining(status, now)}
+                          {status.reason ? ` · ${status.reason}` : ''}
+                        </div>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      {status.key === 'active' && u.suspended_until && (
+                        <div className="status-detail">
+                          Previous suspension expired {formatDateTime(u.suspended_until)}
+                        </div>
+                      )}
+                    </td>
+                    <td data-label="Actions">
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {administrable && (
+                          <>
+                            {isSuperadmin && (
+                              status.key === 'suspended' ? (
+                                <button onClick={() => liftSuspension(u)} className="btn-action">
+                                  Lift suspension
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => { setSuspendError(''); setSuspendTarget(u); }}
+                                  className="btn-action"
+                                  title="Temporarily block sign-in without deactivating the account"
+                                >
+                                  Suspend
+                                </button>
+                              )
+                            )}
+                            <button
+                              onClick={() => handleToggleStatus(u)}
+                              className={`btn-action ${u.active ? 'danger' : ''}`}
+                              title={u.active ? 'Deactivate Account' : 'Activate Account'}
+                            >
+                              {u.active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button onClick={() => handleEdit(u)} className="btn-action">
+                              Edit
+                            </button>
+                            <button onClick={() => handleDelete(u)} className="btn-action danger">
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {!isSuperadmin && (
+          <p className="status-note">
+            Only a superadmin can suspend accounts. Deactivating an account keeps it off until it is
+            reactivated; suspending it lifts by itself.
+          </p>
+        )}
       </div>
+
+      {suspendTarget && (
+        <SuspendDialog
+          user={suspendTarget}
+          saving={suspendSaving}
+          error={suspendError}
+          onCancel={() => { setSuspendTarget(null); setSuspendError(''); }}
+          onConfirm={applySuspension}
+        />
+      )}
     </div>
   );
 };
