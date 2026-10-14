@@ -323,12 +323,18 @@ export function BarList({
  * Donut
  * ------------------------------------------------------------------ */
 
-const RADIUS = 42;
+/**
+ * Geometry note: the arc grows when selected, so the radius must leave room for
+ * the WIDEST stroke or the selected segment spills outside the viewBox and is
+ * clipped by the box. RADIUS 38 + (thickness + 4)/2 = 48, inside the limit of 50.
+ */
+const RADIUS = 38;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const ACTIVE_GROWTH = 4;
 
 export function Donut({
   segments = [],
-  size = 150,
+  size = 180,
   thickness = 16,
   centerLabel,
   centerSub,
@@ -367,7 +373,7 @@ export function Donut({
               key={arc.segment.label}
               cx="50" cy="50" r={RADIUS} fill="none"
               stroke={arc.segment.color}
-              strokeWidth={active === arc.segment.label ? thickness + 5 : thickness}
+              strokeWidth={active === arc.segment.label ? thickness + ACTIVE_GROWTH : thickness}
               strokeDasharray={`${arc.length} ${CIRCUMFERENCE - arc.length}`}
               strokeDashoffset={arc.dashOffset}
               transform="rotate(-90 50 50)"

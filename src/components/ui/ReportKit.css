@@ -186,6 +186,17 @@
   font-weight: 700;
 }
 
+/* SectionTitle renders its heading as <h2>, and index.css paints headings with a
+   gradient via `background-clip: text; -webkit-text-fill-color: transparent`.
+   That fill colour is INHERITED, so every descendant of the h2 — including this
+   popover — drew its glyphs transparent and rendered as an empty box. The
+   computed `color` was correct the whole time, which is why DOM assertions
+   passed while the pixels were blank. Panel headings are <h3> and are unaffected. */
+.rk-info-pop,
+.rk-info-pop * {
+  -webkit-text-fill-color: currentColor;
+}
+
 /* The value must not be hidden while the explanation is open. */
 .rk-stat .rk-info-pop {
   max-width: min(300px, 76vw);
