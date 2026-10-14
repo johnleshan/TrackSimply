@@ -44,11 +44,15 @@ function loadEnv() {
 
 (async () => {
   const fileEnv = loadEnv();
-  const key = process.env.VITE_GROQ_API_KEY || fileEnv.VITE_GROQ_API_KEY;
-  const model = process.env.VITE_GROQ_MODEL || fileEnv.VITE_GROQ_MODEL || DEFAULT_MODEL;
+  // GROQ_API_KEY is the server-side name and has no VITE_ prefix on purpose, so
+  // it is never inlined into the browser bundle.
+  const key = process.env.GROQ_API_KEY || fileEnv.GROQ_API_KEY
+    || process.env.VITE_GROQ_API_KEY || fileEnv.VITE_GROQ_API_KEY;
+  const model = process.env.GROQ_MODEL || fileEnv.GROQ_MODEL
+    || process.env.VITE_GROQ_MODEL || fileEnv.VITE_GROQ_MODEL || DEFAULT_MODEL;
 
   if (!key) {
-    console.error('No VITE_GROQ_API_KEY found in the environment or .env.local.');
+    console.error('No GROQ_API_KEY found in the environment or .env.local.');
     console.error('The assistant will report that it is not configured until one is set.');
     process.exit(1);
   }

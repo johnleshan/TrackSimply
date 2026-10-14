@@ -6,38 +6,27 @@ import { toIsoDate } from '../lib/format';
  * Groq-backed assistant with tool calling.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * The key is read from VITE_GROQ_API_KEY and has no hardcoded fallback.
+ * The browser never holds the Groq key. Requests go to /api/assistant, a
+ * serverless function that makes the upstream call with GROQ_API_KEY.
  *
- * It previously shipped a literal key in this file as a `||` default. That key
- * was committed, leaked into the public bundle, and is the reason this line was
- * rewritten. A missing key now surfaces as a plain message rather than silently
- * billing a stranger's key.
+ * This file previously read VITE_GROQ_API_KEY and called Groq directly from the
+ * browser. Vite inlines VITE_-prefixed variables into the deployed JavaScript,
+ * so that key sat in plain text in a file anyone could download — labelling it
+ * Secret in the dashboard made no difference, because the prefix decides it, not
+ * the label.
  *
- * IMPORTANT: VITE_* values are inlined into the deployed JavaScript, so whatever
- * goes in this variable is readable by anyone who loads the site. The assistant
- * calls Groq directly from the browser because the project has no server. Moving
- * the call behind a serverless function is the correct fix and is not done here.
+ * The model is chosen server-side too, so a caller cannot pick an expensive one.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-
-/*
- * llama-3.3-70b-versatile, which this app called until now, has been removed
- * from Groq and returns 404 model_not_found. Every assistant reply failed. The
- * default below is a current model with tool-calling support, verified against
- * the API; it can be overridden with VITE_GROQ_MODEL without a code change.
- */
-const MODEL = import.meta.env.VITE_GROQ_MODEL || 'openai/gpt-oss-120b';
+const ASSISTANT_ENDPOINT = '/api/assistant';
 
 /** Bounds the tool loop so a model that keeps calling tools still terminates. */
 const MAX_TOOL_ROUNDS = 3;
 
 const NOT_CONFIGURED =
-  'The AI assistant is not configured. Add VITE_GROQ_API_KEY to your environment ' +
-  'and restart — see .env.example. Nothing else in the app is affected.';
+  'The AI assistant is not configured on the server. Set GROQ_API_KEY in your ' +
+  'environment and redeploy — see .env.example. Nothing else in the app is affected.';
 
 // Helper to sync all UI components after AI modification
 const notifySync = () => {
@@ -288,33 +277,30 @@ function systemPrompt() {
   ].join(' ');
 }
 
-async function callGroq(payload) {
-  const response = await fetch(GROQ_URL, {
+async function callAssistant(payload) {
+  const response = await fetch(ASSISTANT_ENDPOINT, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ model: MODEL, ...payload }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
 
   const data = await response.json().catch(() => null);
 
-  // Groq reports failures in the body, so check both the status and the payload
-  // rather than assuming choices exists.
+  if (response.status === 503 && data?.error === 'not_configured') {
+    throw Object.assign(new Error(NOT_CONFIGURED), { notConfigured: true });
+  }
+
+  // Groq reports failures in the body, so check the status and the payload.
   if (!response.ok || data?.error) {
-    const detail = data?.error?.message || `HTTP ${response.status}`;
-    throw new Error(detail);
+    throw new Error(data?.message || `The assistant returned ${response.status}.`);
   }
 
   const message = data?.choices?.[0]?.message;
-  if (!message) throw new Error('Groq returned no message.');
+  if (!message) throw new Error('The assistant returned no message.');
   return message;
 }
 
 export const chatWithAI = async (messages, userId) => {
-  if (!API_KEY) return NOT_CONFIGURED;
-
   try {
     // The chat window keeps the whole conversation and resends all of it every
     // turn. Left unbounded that alone exhausts a low token budget, so only the
@@ -326,7 +312,7 @@ export const chatWithAI = async (messages, userId) => {
       // The final round runs without tools, which forces a written answer and
       // guarantees the loop ends even if the model would keep calling them.
       const allowTools = round < MAX_TOOL_ROUNDS;
-      const message = await callGroq({
+      const message = await callAssistant({
         messages: conversation,
         ...(allowTools ? { tools, tool_choice: 'auto' } : {}),
       });
@@ -363,12 +349,16 @@ export const chatWithAI = async (messages, userId) => {
 
     return 'I could not finish that request. Please try rephrasing it.';
   } catch (error) {
-    console.error('Groq AI Error:', error);
+    console.error('Assistant error:', error);
+
+    if (error?.notConfigured) return NOT_CONFIGURED;
+
     const message = String(error?.message || error);
-    const modelGone = /model_not_found|does not exist|do not have access/i.test(message);
-    if (modelGone) {
-      return `The configured model (${MODEL}) is not available on this Groq account. Set VITE_GROQ_MODEL to a model the key can access.`;
+
+    if (/model_not_found|does not exist|do not have access/i.test(message)) {
+      return 'The configured model is not available on this Groq account. Set GROQ_MODEL to a model the key can access, then run scripts/check-ai.cjs.';
     }
+
     return `I could not reach the assistant. Error: ${message}`;
   }
 };
