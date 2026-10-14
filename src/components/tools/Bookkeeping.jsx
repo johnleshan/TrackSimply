@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { runLegacyMigration } from '../../lib/legacyMigration';
+import { useAiSync } from '../../lib/useAiSync';
 
 const Bookkeeping = () => {
   const { user } = useAuth();
@@ -32,6 +33,9 @@ const Bookkeeping = () => {
 
   const isAdmin = ['admin', 'superadmin'].includes(user?.role);
 
+  // Keep the table current when the assistant changes a record.
+  useAiSync(() => fetchTransactions());
+
   const fetchTransactions = async () => {
     setLoading(true);
     let txQuery = supabase.from('transactions').select('*').order('date', { ascending: false });
@@ -50,12 +54,6 @@ const Bookkeeping = () => {
     
     if (!txError && txs) {
       setAllTransactions(txs);
-      // Auto-expand the most recent date if any
-      if (txs.length > 0) {
-        const latestDate = txs[0].date;
-        setExpandedDates({ [latestDate]: true });
-        setExpandedTypes({ [`${latestDate}-Income`]: true, [`${latestDate}-Expense`]: true });
-      }
     }
     if (!vehError && vehs) setVehicles(vehs);
     if (!invError && inv) setInventoryItems(inv);
@@ -287,6 +285,35 @@ const Bookkeeping = () => {
   }, {});
 
   const sortedDates = Object.keys(groupedTxs).sort((a, b) => new Date(b) - new Date(a));
+
+  /* Expand the newest visible date whenever none of the currently expanded
+     dates are on screen.
+   *
+   * This used to run once inside the fetch, against `txs[0]` — the newest
+   * transaction overall, regardless of the selected period. If the latest
+   * transaction sat outside that period, the expanded date was not in the list,
+   * so every group rendered collapsed and the period looked empty even though
+   * the totals above it were correct. The same thing happened when the
+   * assistant logged a transaction while the screen was open.
+   *
+   * Only acting when nothing visible is expanded keeps the user's own
+   * collapses intact. */
+  useEffect(() => {
+    if (sortedDates.length === 0) return;
+    const anyVisibleExpanded = sortedDates.some((date) => expandedDates[date]);
+    if (anyVisibleExpanded) return;
+
+    const newest = sortedDates[0];
+    setExpandedDates((prev) => ({ ...prev, [newest]: true }));
+    setExpandedTypes((prev) => ({
+      ...prev,
+      [`${newest}-Income`]: true,
+      [`${newest}-Expense`]: true,
+    }));
+    // expandedDates is read but deliberately not a dependency: including it
+    // would re-run on every toggle and fight the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedDates.join('|')]);
 
   const toggleDate = (date) => setExpandedDates(prev => ({ ...prev, [date]: !prev[date] }));
   const toggleType = (date, type) => setExpandedTypes(prev => ({ ...prev, [`${date}-${type}`]: !prev[`${date}-${type}`] }));

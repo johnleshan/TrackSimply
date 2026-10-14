@@ -166,6 +166,43 @@ function applyFilters(rows, params) {
   return out;
 }
 
+/**
+ * Applies ?order=column.direction.
+ *
+ * The mock previously ignored ordering entirely, so rows came back in insertion
+ * order. That is not how PostgREST behaves, and it mattered: Bookkeeping reads
+ * `txs[0]` as "the newest transaction", which is only true because the real API
+ * honours .order('date', { ascending: false }). Without this the mock made a
+ * working screen look broken.
+ */
+function applyOrder(rows, params) {
+  const spec = params.get('order');
+  if (!spec) return rows;
+
+  // PostgREST applies the last key first, so iterate in reverse to make the
+  // leftmost key the primary sort.
+  const keys = spec.split(',').map((s) => s.trim()).filter(Boolean).reverse();
+  const out = [...rows];
+
+  for (const key of keys) {
+    const [column, ...mods] = key.split('.');
+    const desc = mods.includes('desc');
+    out.sort((a, b) => {
+      const av = a[column];
+      const bv = b[column];
+      if (av === bv) return 0;
+      if (av === null || av === undefined) return 1;
+      if (bv === null || bv === undefined) return -1;
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv));
+      return desc ? -cmp : cmp;
+    });
+  }
+
+  return out;
+}
+
 const ALLOWED_HEADERS = [
   'authorization',
   'apikey',
@@ -277,7 +314,7 @@ function mockPlugin() {
           return sendJson([]);
         }
 
-        const rows = applyFilters(allRows, parsed.searchParams);
+        const rows = applyOrder(applyFilters(allRows, parsed.searchParams), parsed.searchParams);
         const wantsSingle = (req.headers.accept || '').includes('vnd.pgrst.object');
 
         res.setHeader('Content-Range', `0-${Math.max(rows.length - 1, 0)}/*`);

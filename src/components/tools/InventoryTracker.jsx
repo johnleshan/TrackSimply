@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { runLegacyMigration } from '../../lib/legacyMigration';
+import { useAiSync } from '../../lib/useAiSync';
 
 const InventoryTracker = () => {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newItem, setNewItem] = useState({ name: '', stock: '', reorder: '', price: '' });
+
+  // Keep the table current when the assistant changes a record.
+  useAiSync(() => fetchItems());
 
   const fetchItems = async () => {
     setLoading(true);

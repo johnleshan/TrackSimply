@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { runLegacyMigration } from '../../lib/legacyMigration';
+import { useAiSync } from '../../lib/useAiSync';
 
 const DebtTracker = () => {
   const { user } = useAuth();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newDebt, setNewDebt] = useState({ name: '', total: '', interest: '', minPayment: '' });
+
+  // Keep the table current when the assistant changes a record.
+  useAiSync(() => fetchDebts());
 
   const fetchDebts = async () => {
     setLoading(true);
