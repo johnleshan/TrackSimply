@@ -1,0 +1,557 @@
+/* ==========================================================================
+   Sign-in
+   ==========================================================================
+   Adapted from the Kith sign-in template (kombai:import-screen:signin-web-9).
+
+   Palette, type scale and shape geometry are taken from that design. Three
+   deliberate departures, because the reference is a template for a different
+   kind of product:
+
+   - No Apple / Google buttons. This application has no OAuth provider; the
+     buttons would be decorative, and a sign-in screen is the worst place to
+     imply a capability that does not exist.
+   - Username and password rather than a single email field, because accounts
+     authenticate against a username in site_users.
+   - No "create an account" link or Terms/Privacy links, since there is no
+     self-signup and no such pages. Replaced with a sentence telling the user
+     who to ask, which is the information they actually need.
+
+   The tokens are scoped to .k-page on purpose. The sign-in is always dark, as
+   the design intends, and this must not leak into the light dashboard theme.
+   ========================================================================== */
+
+.k-page {
+  --k-bg: #0d0804;
+  --k-panel: #171009;
+  --k-panel-border: rgba(255, 255, 255, 0.08);
+  --k-text: #f8eee5;
+  --k-text-2: rgba(248, 238, 229, 0.62);
+  --k-text-3: rgba(248, 238, 229, 0.4);
+  --k-control: rgba(255, 255, 255, 0.07);
+  --k-control-hover: rgba(255, 255, 255, 0.11);
+  --k-control-border: rgba(255, 255, 255, 0.12);
+  --k-teal: #37e0c4;
+  --k-blue: #4a7bff;
+  --k-violet: #8b6bff;
+  --k-lime: #c7e35a;
+  --k-coral: #ff8a65;
+  --k-serif: Georgia, 'Times New Roman', serif;
+  --k-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background: var(--k-bg);
+  color: var(--k-text);
+  font-family: var(--k-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The dashboard locks body scrolling on desktop. The stacked sign-in is taller
+   than a tablet viewport, so it must be allowed to scroll. :has() makes this
+   more specific than the plain `body` rule without needing !important. */
+body:has(.k-page) {
+  overflow: auto;
+  background: #0d0804;
+}
+
+/* --------------------------------------------------------------------------
+   Auth column
+   -------------------------------------------------------------------------- */
+
+.k-auth {
+  position: relative;
+  flex: 0 0 34%;
+  max-width: 620px;
+  min-width: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(74, 123, 255, 0.28), transparent 55%),
+    radial-gradient(circle at 85% 92%, rgba(139, 107, 255, 0.22), transparent 60%),
+    var(--k-panel);
+  border-right: 1px solid var(--k-panel-border);
+}
+
+.k-auth__inner {
+  width: 100%;
+  max-width: 360px;
+}
+
+.k-logo-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 48px;
+}
+
+.k-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--k-serif);
+  font-style: italic;
+  font-size: 25px;
+  letter-spacing: 0.4px;
+  color: var(--k-text);
+}
+
+.k-headline {
+  font-family: var(--k-serif);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.25;
+  text-align: center;
+  margin: 0 0 30px;
+  color: var(--k-text);
+}
+
+/* --------------------------------------------------------------------------
+   Form
+   -------------------------------------------------------------------------- */
+
+.k-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.k-field-label {
+  font-size: 11px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--k-text-3);
+  margin-bottom: 7px;
+}
+
+.k-field {
+  width: 100%;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--k-control-border);
+  background: var(--k-control);
+  color: var(--k-text);
+  font-size: 16px; /* 16px stops iOS Safari zooming the viewport on focus. */
+  font-family: var(--k-sans);
+  padding: 0 15px;
+  margin-bottom: 16px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.k-field::placeholder {
+  color: var(--k-text-3);
+}
+
+.k-field:focus {
+  outline: none;
+  border-color: var(--k-teal);
+  background: var(--k-control-hover);
+}
+
+.k-field:disabled {
+  opacity: 0.6;
+}
+
+/* Autofill comes back with a light background unless it is overridden. */
+.k-field:-webkit-autofill,
+.k-field:-webkit-autofill:hover,
+.k-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--k-text);
+  -webkit-box-shadow: 0 0 0 1000px #241a12 inset;
+  caret-color: var(--k-text);
+  transition: background-color 9999s ease-out;
+}
+
+.k-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.k-password .k-field {
+  padding-right: 48px;
+}
+
+.k-reveal {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--k-text-3);
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.k-reveal:hover {
+  color: var(--k-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.k-reveal:focus-visible {
+  outline: 2px solid var(--k-teal);
+  outline-offset: 1px;
+}
+
+/* Reserved height stops the button jumping when an error appears. */
+.k-error-slot {
+  min-height: 20px;
+  margin: 2px 0 12px;
+}
+
+.k-error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #ff9d8a;
+}
+
+.k-submit {
+  width: 100%;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--k-text-3);
+  font-family: var(--k-sans);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.k-submit.is-ready {
+  background: linear-gradient(135deg, var(--k-teal), var(--k-blue));
+  color: #10201d;
+  cursor: pointer;
+}
+
+.k-submit.is-ready:hover {
+  filter: brightness(1.06);
+}
+
+.k-submit.is-ready:active {
+  transform: translateY(1px);
+}
+
+.k-submit:focus-visible {
+  outline: 2px solid var(--k-teal);
+  outline-offset: 2px;
+}
+
+.k-note {
+  margin: 20px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--k-text-3);
+}
+
+/* --------------------------------------------------------------------------
+   Showcase column
+   -------------------------------------------------------------------------- */
+
+.k-showcase {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  background: radial-gradient(circle at 50% 38%, #21170f 0%, #0d0804 62%);
+  overflow: hidden;
+  padding: 40px;
+}
+
+.k-decor {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  flex: 0 0 auto;
+}
+
+.k-shape {
+  position: absolute;
+}
+
+.k-badge {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #3a2e24, #120e0a 70%);
+  box-shadow: 0 0 70px rgba(55, 224, 196, 0.18), inset 0 0 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.k-badge-text {
+  font-family: var(--k-serif);
+  font-style: italic;
+  font-size: 46px;
+  letter-spacing: 0.5px;
+  color: var(--k-text);
+}
+
+.k-triangle {
+  width: 0;
+  height: 0;
+  border-left: 62px solid transparent;
+  border-right: 62px solid transparent;
+  border-bottom: 108px solid var(--k-lime);
+  left: -18px;
+  top: 118px;
+  filter: drop-shadow(0 0 30px rgba(199, 227, 90, 0.45));
+  opacity: 0.92;
+}
+
+.k-blob {
+  border-radius: 45% 55% 60% 40% / 55% 45% 55% 45%;
+  background: linear-gradient(135deg, var(--k-violet), #ff9ec4);
+  box-shadow: 0 0 34px rgba(139, 107, 255, 0.35);
+}
+
+.k-blob-1 {
+  width: 150px;
+  height: 150px;
+  top: -16px;
+  right: 6px;
+  border-radius: 50% 50% 46% 54% / 58% 46% 54% 42%;
+}
+
+.k-blob-2 {
+  width: 130px;
+  height: 100px;
+  bottom: 66px;
+  left: -6px;
+  background: linear-gradient(135deg, var(--k-coral), var(--k-lime));
+  border-radius: 60% 40% 50% 50% / 60% 55% 45% 40%;
+}
+
+.k-quarter {
+  width: 130px;
+  height: 130px;
+  right: -14px;
+  bottom: 14px;
+  background: linear-gradient(135deg, #ff9d8a, var(--k-coral));
+  border-radius: 0 100% 0 0;
+}
+
+.k-pentagon {
+  width: 62px;
+  height: 62px;
+  right: -8px;
+  top: 96px;
+  background: var(--k-blue);
+  opacity: 0.85;
+  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+}
+
+.k-square-outline {
+  width: 56px;
+  height: 56px;
+  left: 108px;
+  top: -6px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  transform: rotate(8deg);
+}
+
+.k-diamond-outline {
+  width: 60px;
+  height: 60px;
+  left: 26px;
+  bottom: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transform: rotate(45deg);
+}
+
+.k-welcome {
+  text-align: center;
+  max-width: 430px;
+}
+
+.k-welcome h2 {
+  font-family: var(--k-sans);
+  font-weight: 700;
+  font-size: 20px;
+  margin: 0 0 10px;
+  color: var(--k-text);
+}
+
+.k-welcome p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--k-text-2);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Slides
+   -------------------------------------------------------------------------- */
+
+.k-dots {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.k-dot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+.k-dot:hover {
+  opacity: 0.7;
+}
+
+.k-dot:focus-visible {
+  outline: 2px solid var(--k-teal);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.k-dot.is-active {
+  opacity: 1;
+}
+
+.k-dot.dot-tri {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 11px solid var(--k-text);
+}
+
+.k-dot.dot-circle {
+  border-radius: 50%;
+  background: var(--k-text);
+}
+
+.k-dot.dot-square {
+  background: var(--k-text);
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Loading
+   -------------------------------------------------------------------------- */
+
+.k-page--center {
+  align-items: center;
+  justify-content: center;
+}
+
+.k-loading {
+  text-align: center;
+}
+
+.k-spinner {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--k-teal);
+  animation: k-spin 0.8s linear infinite;
+}
+
+@keyframes k-spin {
+  to { transform: rotate(360deg); }
+}
+
+.k-loading p {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--k-text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-spinner { animation-duration: 2s; }
+  .k-dot { transition: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .k-page {
+    flex-direction: column;
+  }
+
+  .k-auth {
+    flex: none;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--k-panel-border);
+    padding: 40px 24px;
+  }
+
+  .k-showcase {
+    padding: 48px 24px;
+    gap: 24px;
+  }
+
+  .k-decor {
+    width: 300px;
+    height: 300px;
+  }
+
+  .k-badge {
+    width: 180px;
+    height: 180px;
+  }
+
+  .k-badge-text {
+    font-size: 32px;
+  }
+
+  .k-logo-row {
+    margin-bottom: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .k-headline {
+    font-size: 27px;
+  }
+
+  .k-decor {
+    width: 240px;
+    height: 240px;
+  }
+
+  .k-badge {
+    width: 150px;
+    height: 150px;
+  }
+
+  .k-badge-text {
+    font-size: 26px;
+  }
+
+  .k-welcome p {
+    font-size: 14px;
+  }
+}

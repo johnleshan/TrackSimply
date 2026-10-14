@@ -11,6 +11,7 @@ import VehicleManagement from './components/tools/VehicleManagement';
 import AccountManager from './components/tools/AccountManager';
 import { useAuth } from './context/AuthContext';
 import { loadSettings } from './lib/appSettings';
+import LoginScreen, { LoadingScreen } from './components/LoginScreen';
 
 const TOOL_TITLES = {
   overview: 'Dashboard',
@@ -95,94 +96,6 @@ const AppHeader = ({ title, theme, toggleTheme, logout, isCollapsed, user }) => 
   </header>
 );
 
-const LoginScreen = ({ theme, toggleTheme }) => {
-  const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError('');
-    const result = await login(username, password);
-    if (!result.success) {
-      setError(result.reason);
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="login-screen">
-      <button className="app-header-btn" onClick={toggleTheme} aria-label="Toggle Theme" title="Toggle theme">
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
-
-      <div className="card login-card">
-        <div className="login-brand">
-          <div className="app-header__logo">TS</div>
-          <h1>TrackSimply</h1>
-          <p>Sign in to your business workspace</p>
-        </div>
-
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="field">
-            <label className="field-label" htmlFor="login-username">Username</label>
-            <input
-              id="login-username"
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="field">
-            <label className="field-label" htmlFor="login-password">Password</label>
-            <div className="password-input-wrapper">
-              <input
-                id="login-password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="reveal-btn"
-                onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? 'Hide password' : 'Show password'}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
-              </button>
-            </div>
-          </div>
-
-          {error && <p className="login-error">{error}</p>}
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
-            {isSubmitting ? 'Verifying Account...' : 'Sign In'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const LoadingScreen = () => (
-  <div className="login-screen">
-    <div className="loading-block">
-      <div className="spinner" />
-      <p>CONNECTING TO CLOUD...</p>
-    </div>
-  </div>
-);
-
 function App() {
   const { user, logout, loading } = useAuth();
   const [activeTool, setActiveTool] = useState('overview');
@@ -237,7 +150,7 @@ function App() {
   }
 
   if (!user) {
-    return <LoginScreen theme={theme} toggleTheme={toggleTheme} />;
+    return <LoginScreen />;
   }
 
   return (
