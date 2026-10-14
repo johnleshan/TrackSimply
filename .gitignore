@@ -31,3 +31,8 @@ supabase/.env.staging
 shot-*.png
 demo-*.png
 dev-server.log
+
+# Vendored ArchitectUI theme source. Design reference only — nothing in src/
+# imports from it, and the tokens were ported into src/index.css by hand. It is
+# 321 files / 10.7 MB. Remove this line to version it in the repo instead.
+architectui-html-theme-free/

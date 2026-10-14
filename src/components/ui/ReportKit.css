@@ -2,8 +2,7 @@
   background: var(--glass-card);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-inner), var(--shadow-lg);
-  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-lg);
   padding: 22px;
   display: flex;
   flex-direction: column;
@@ -186,12 +185,12 @@
   font-weight: 700;
 }
 
-/* SectionTitle renders its heading as <h2>, and index.css paints headings with a
-   gradient via `background-clip: text; -webkit-text-fill-color: transparent`.
-   That fill colour is INHERITED, so every descendant of the h2 — including this
-   popover — drew its glyphs transparent and rendered as an empty box. The
-   computed `color` was correct the whole time, which is why DOM assertions
-   passed while the pixels were blank. Panel headings are <h3> and are unaffected. */
+/* The ArchitectUI heading treatment paints in flat colour, so this guard is no
+   longer load-bearing. It is kept because the failure it prevents is invisible
+   to DOM assertions: if a heading ever regains a `background-clip: text` with a
+   transparent `-webkit-text-fill-color`, that fill is INHERITED by descendants
+   and every child of an <h2> renders as a blank box while its computed `color`
+   still reports the right value. */
 .rk-info-pop,
 .rk-info-pop * {
   -webkit-text-fill-color: currentColor;
@@ -215,18 +214,18 @@
 }
 
 .rk-verdict-ok {
-  background: rgba(5, 150, 105, 0.14);
-  color: var(--success);
+  background: rgba(58, 196, 125, 0.15);
+  color: var(--success-ink);
 }
 
 .rk-verdict-warn {
-  background: rgba(217, 119, 6, 0.14);
-  color: var(--warning);
+  background: rgba(247, 185, 36, 0.2);
+  color: var(--warning-ink);
 }
 
 .rk-verdict-bad {
-  background: rgba(220, 38, 38, 0.14);
-  color: var(--danger);
+  background: rgba(217, 37, 80, 0.12);
+  color: var(--danger-ink);
 }
 
 .rk-verdict-muted {
@@ -274,13 +273,13 @@
 }
 
 .rk-note-warn {
-  background: rgba(217, 119, 6, 0.1);
-  border-left-color: var(--warning);
+  background: rgba(247, 185, 36, 0.12);
+  border-left-color: var(--warning-ink);
 }
 
 .rk-note-bad {
-  background: rgba(220, 38, 38, 0.1);
-  border-left-color: var(--danger);
+  background: rgba(217, 37, 80, 0.08);
+  border-left-color: var(--danger-ink);
 }
 
 /* ---- Facts ---- */
@@ -330,9 +329,14 @@
 }
 
 .rk-btn-primary {
-  background: linear-gradient(135deg, var(--accent-teal), #06b6d4);
-  border-color: transparent;
-  color: #0f172a;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.rk-btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 /* ---- Date presets ---- */
@@ -367,9 +371,9 @@
 }
 
 .rk-preset-active {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-  color: #0f172a;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
 }
 
 .rk-custom {

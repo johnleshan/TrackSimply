@@ -1,62 +1,155 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+/* ==========================================================================
+   TrackSimply — ArchitectUI design system
+   --------------------------------------------------------------------------
+   Palette, metrics and component styling ported from the ArchitectUI HTML
+   theme (v4.1.0) vendored under `architectui-html-theme-free/`.
+
+   The legacy variable names (`--accent-teal`, `--glass-card`, ...) are kept as
+   the public contract because every tool component reads them. New code should
+   prefer the semantic tokens defined below.
+
+   Colour source of truth:
+     themes/default/_variables.scss, layout/_layout-variables.scss
+   ========================================================================== */
+
+/* ArchitectUI ships no webfont, so the interface runs on the platform UI stack.
+   Dropping the previous Google-hosted display face also removes a render
+   blocking third-party request from the app's critical path. */
+@font-face { font-display: swap; }
 
 :root {
-  /* LIGHT THEME (DEFAULT) */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff; 
-  --bg-sidebar: rgba(255, 255, 255, 0.9);
-  --glass-card: #ffffff;
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --accent-teal: #0891b2; /* Deeper Cyan/Teal for contrast on light */
-  --accent-teal-soft: rgba(8, 145, 178, 0.1);
-  --text-main: #1e293b;
-  --text-dim: #64748b;
-  --text-dark: #334155;
-  --success: #059669;
-  --danger: #dc2626;
-  --warning: #d97706;
+  /* ---- Brand palette (ArchitectUI "default" theme) ---- */
+  --primary: #3f6ad8;          /* $brand */
+  --primary-hover: #2f57c4;    /* shade-color($brand, 15%) */
+  --primary-soft: #e0f3ff;     /* $dropdown-link-hover-bg — nav hover + active */
+  --info: #16aaff;             /* $cyan */
+  --success: #3ac47d;          /* $green */
+  --warning: #f7b924;          /* $yellow */
+  --danger: #d92550;           /* $red */
+  --purple: #794c8a;           /* $alt */
+  --orange: #fd7e14;
+  --teal: #16e0bd;
 
-  /* AI SPECIFIC (High Contrast) */
-  --ai-window-bg: #1e293b; /* Dark by default to stand out on light */
-  --ai-window-text: #f8fafc;
-  --ai-msg-assistant: rgba(255, 255, 255, 0.05);
-  --ai-msg-user: rgba(8, 145, 178, 0.2);
-  
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-inner: inset 0 0 4px rgba(0, 0, 0, 0.02);
-  --transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  --radius-xl: 24px;
-  --radius-lg: 16px;
-  --radius-md: 12px;
+  /* Fill tokens are tuned for saturated brand use (bars, dots, borders). These
+     ink variants are the darkened equivalents used wherever the colour has to
+     be read as text on white — #3ac47d and #f7b924 both fall below 3:1. */
+  --success-ink: #1f9254;
+  --warning-ink: #a97406;
+  --danger-ink: #c01c44;
+  --primary-ink: #2f57c4;
+  --info-ink: #0a83c4;
+  --purple-ink: #63396f;
+
+  /* ---- Neutrals (Bootstrap greys, as themed by ArchitectUI) ---- */
+  --gray-100: #f8f9fa;
+  --gray-200: #e9ecef;
+  --gray-300: #dee2e6;
+  --gray-400: #ced4da;
+  --gray-500: #adb5bd;
+  --gray-600: #6c757d;
+  --gray-700: #495057;
+  --gray-800: #343a40;
+  --gray-900: #212529;
+
+  /* ---- Surfaces ---- */
+  --bg-primary: #f8f9fa;       /* page canvas */
+  --bg-secondary: #ffffff;     /* cards, inputs, menus */
+  --bg-sidebar: #ffffff;
+  --glass-card: #ffffff;
+  --glass-border: var(--gray-200);
+
+  /* ---- Text ---- */
+  --text-main: var(--gray-800);   /* headings, values */
+  --text-body: var(--gray-700);   /* running copy — $body-color */
+  --text-dim: var(--gray-600);    /* meta, captions */
+  --text-dark: var(--gray-900);
+
+  /* ---- Legacy aliases ----
+     Historical names kept so the existing components inherit the new theme
+     without a flag day. Prefer the semantic tokens above in new code. */
+  --accent-teal: var(--primary);
+  --accent-teal-soft: var(--primary-soft);
+
+  /* ---- Radii — Bootstrap scale used by the template ---- */
+  --radius-xl: 12px;
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-pill: 50px;
+
+  /* ---- Elevation — ArchitectUI $box-shadow-default ---- */
+  --shadow-lg: 0 0.46875rem 2.1875rem rgba(63, 106, 216, 0.03),
+               0 0.9375rem 1.40625rem rgba(63, 106, 216, 0.03),
+               0 0.25rem 0.53125rem rgba(63, 106, 216, 0.05),
+               0 0.125rem 0.1875rem rgba(63, 106, 216, 0.03);
+  --shadow-inner: none;
+  --shadow-raised: 0 0.46875rem 2.1875rem rgba(63, 106, 216, 0.06),
+                   0 0.25rem 0.53125rem rgba(63, 106, 216, 0.07);
+  --transition: all 0.2s ease;
+
+  /* ---- AI console (MagicAI) ---- */
+  --ai-window-bg: #ffffff;
+  --ai-window-text: var(--gray-800);
+  --ai-msg-assistant: rgba(0, 0, 0, 0.04);
+  --ai-msg-user: rgba(63, 106, 216, 0.1);
+
+  /* ---- App shell metrics (layout/_layout-variables.scss) ---- */
+  --sidebar-width: 280px;
+  --sidebar-width-collapsed: 80px;
+  --header-height: 60px;
+}
+
+/* Dark theme. ArchitectUI is a light-first template, so dark mode keeps the
+   same hue relationships rather than inverting them. */
+[data-theme='dark'] {
+  --bg-primary: #171b26;
+  --bg-secondary: #1f2533;
+  --bg-sidebar: #1a1f2b;
+  --glass-card: #1f2533;
+  --glass-border: #2e3547;
+
+  --primary: #6b8ef0;
+  --primary-hover: #8aa5f5;
+  --primary-soft: rgba(107, 142, 240, 0.16);
+
+  --success: #3ac47d;
+  --warning: #f7b924;
+  --danger: #f2567c;
+  --info: #16aaff;
+  --purple: #a06fb2;
+
+  --success-ink: #4cc98a;
+  --warning-ink: #f7b924;
+  --danger-ink: #f2567c;
+  --primary-ink: #8aa5f5;
+  --info-ink: #3cbcf3;
+  --purple-ink: #c191d1;
+
+  --text-main: #f1f3f7;
+  --text-body: #c6cbd8;
+  --text-dim: #8e96a8;
+  --text-dark: #e6e9f0;
+
+  --gray-100: #1a1f2b;
+  --gray-200: #2e3547;
+  --gray-600: #8e96a8;
+  --gray-700: #c6cbd8;
+  --gray-800: #f1f3f7;
+  --gray-900: #ffffff;
+
+  --shadow-lg: 0 0.46875rem 2.1875rem rgba(0, 0, 0, 0.3),
+               0 0.25rem 0.53125rem rgba(0, 0, 0, 0.24);
+  --shadow-raised: 0 0.46875rem 2.1875rem rgba(0, 0, 0, 0.4);
+
+  --ai-window-bg: #1f2533;
+  --ai-window-text: #f1f3f7;
+  --ai-msg-assistant: rgba(255, 255, 255, 0.06);
+  --ai-msg-user: rgba(107, 142, 240, 0.22);
 }
 
 /* Instant Theme Utility */
-.no-transition, .no-transition * {
+.no-transition,
+.no-transition * {
   transition: none !important;
-}
-
-[data-theme="dark"] {
-  /* DARK THEME */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b; 
-  --bg-sidebar: rgba(15, 23, 42, 0.95);
-  --glass-card: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --accent-teal: #22d3ee;
-  --accent-teal-soft: rgba(34, 211, 238, 0.15);
-  --text-main: #f8fafc;
-  --text-dim: #94a3b8;
-  --text-dark: #cbd5e1;
-  --success: #10b981;
-  --danger: #f43f5e;
-  --warning: #f59e0b;
-
-  --ai-window-bg: #ffffff; /* Light on dark to stand out */
-  --ai-window-text: #0f172a;
-  --ai-msg-assistant: rgba(0, 0, 0, 0.05);
-  --ai-msg-user: rgba(8, 145, 178, 0.1);
-
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -65,20 +158,27 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
   background: var(--bg-primary);
-  color: var(--text-main);
-  font-family: 'Outfit', sans-serif;
+  color: var(--text-body);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-size: 0.9375rem;
+  line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
-  /* Removed transition for instant theme switching as requested */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-[data-theme="dark"] body {
-  background: radial-gradient(circle at top right, #112222 0%, #0f172a 100%);
-}
+/* ==========================================================================
+   App shell
+   ========================================================================== */
 
-/* Dashboard Layout - Default Mobile (Stacked) */
 .dashboard-container {
   display: flex;
   flex-direction: column;
@@ -86,210 +186,675 @@ body {
   width: 100%;
 }
 
-/* Tool View Wrapper - Responsive Padding */
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .tool-view {
-  padding: 20px 15px; /* Mobile Padding */
+  padding: 24px 16px 100px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 30px;
-  animation: slideUp 0.6s ease-out;
-  padding-bottom: 100px; /* Space for Bottom Nav */
+  gap: 20px;
+  animation: slideUp 0.3s ease-out;
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Card - Responsive Spacing */
-.card {
-  background: var(--glass-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 20px; /* Mobile Card Padding */
-  box-shadow: var(--shadow-lg), var(--shadow-inner);
-  /* Removed base transition to ensure theme-swapping colors are instant. 
-     Transitions should only be applied to interactive states like transform. */
+/* ---- App header (60px, spans the full width) ---- */
+
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: stretch;
+  z-index: 1050;
 }
 
-/* Dashboard Tables - Responsive Wrap */
+/* The brand cell lines up exactly with the sidebar column, so the logo sits in
+   the corner the way it does in the template. */
+.app-header__brand {
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 1.5rem;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: width var(--transition), flex-basis var(--transition);
+}
+
+.dashboard-container.sidebar-collapsed .app-header__brand {
+  width: var(--sidebar-width-collapsed);
+  flex-basis: var(--sidebar-width-collapsed);
+  padding: 0;
+  justify-content: center;
+}
+
+.app-header__logo {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(140deg, var(--primary) -30%, #5b83e6 90%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header__name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* Page title strip — ArchitectUI .app-page-title */
+.app-page-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 1.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+[data-theme='dark'] .app-page-title {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.app-page-title__crumb {
+  color: var(--text-dim);
+}
+
+.app-page-title__current {
+  font-weight: 600;
+}
+
+.app-page-title__sep {
+  color: var(--gray-400);
+}
+
+/* Header actions — replaced the previous floating fixed-position buttons */
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 1.25rem;
+}
+
+.app-header-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-300);
+  background: var(--bg-secondary);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  transition: var(--transition);
+}
+
+.app-header-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.app-header-btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.app-header-btn--danger:hover {
+  background: var(--danger-ink);
+  border-color: var(--danger-ink);
+  color: #fff;
+}
+
+/* Identity chip in the header */
+.app-header__user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-left: 12px;
+  margin-left: 4px;
+  border-left: 1px solid var(--gray-300);
+}
+
+.app-header__avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
+.app-header__user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.app-header__user-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.app-header__user-role {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* ---- Mobile header ---- */
+
+.mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.mobile-brand-logo {
+  background: linear-gradient(140deg, var(--primary) -30%, #5b83e6 90%);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-lg);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.current-view-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.card {
+  background: var(--glass-card);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition);
+}
+
+/* ArchitectUI pairs every card with a 3.5rem uppercase rule. */
+.card-title {
+  text-transform: uppercase;
+  color: rgba(63, 106, 216, 0.7);
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 14px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gray-200);
+}
+
+/* Interactive card (dashboard shortcuts) */
+.card-link {
+  cursor: pointer;
+}
+
+.card-link:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Stat tile — ArchitectUI .widget-content */
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stat-card__icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  background: var(--primary-soft);
+}
+
+.stat-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stat-card__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.stat-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.stat-card__sub {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+/* Accent rail used by the dashboard summary cards */
+.stat-card--success { border-left: 4px solid var(--success); }
+.stat-card--danger { border-left: 4px solid var(--danger); }
+.stat-card--primary { border-left: 4px solid var(--primary); }
+.stat-card--warning { border-left: 4px solid var(--warning); }
+
+.stat-card.is-loading { opacity: 0.6; }
+
+/* ---- Period toolbar ---- */
+
+.period-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.period-bar__dates {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.period-bar__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---- Feature shortcut card ---- */
+
+.feature-card .stat-card {
+  align-items: flex-start;
+}
+
+.feature-card__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.feature-card__stat {
+  margin-top: 10px;
+  align-self: flex-start;
+}
+
+.section-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+  word-break: break-word;
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-main);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: 1.15rem; }
+h4 { font-size: 1rem; }
+
+/* ArchitectUI sets headings in flat colour. The previous theme clipped a
+   gradient onto every heading and set `-webkit-text-fill-color: transparent`,
+   which descendants inherit — anything nested inside an <h2> rendered as an
+   invisible box. Solid colour removes that failure mode at the source. */
+.gradient-text {
+  color: var(--primary);
+}
+
+.title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.title-section h1 {
+  font-size: 1.75rem;
+}
+
+/* Small uppercase eyebrow above a heading */
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.section-lead {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Buttons — ArchitectUI $btn-transition, font-size .8rem / weight 500
+   ========================================================================== */
+
+.btn {
+  padding: 0.5rem 1.1rem;
+  min-height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: var(--transition);
+  position: relative;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0.125rem 0.625rem rgba(63, 106, 216, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 0.125rem 0.625rem rgba(63, 106, 216, 0.5);
+}
+
+.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-outline {
+  background: transparent;
+  border-color: var(--gray-300);
+  color: var(--text-main);
+}
+
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Compact row action — used throughout the record tables */
+.btn-action {
+  padding: 0.35rem 0.7rem;
+  min-height: 32px;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--gray-300);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: var(--transition);
+  background: var(--bg-secondary);
+  color: var(--text-body);
+}
+
+.btn-action:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+
+.btn-action.danger:hover {
+  background: rgba(217, 37, 80, 0.08);
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+
+.btn-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Theme toggle (mobile + login) */
+.theme-toggle {
+  background: var(--bg-secondary);
+  border: 1px solid var(--gray-300);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 1.05rem;
+  position: static;
+}
+
+.theme-toggle:hover {
+  border-color: var(--primary);
+}
+
+/* ==========================================================================
+   Badges — ArchitectUI .badge (uppercase, bold, 5px 10px)
+   ========================================================================== */
+
+.badge {
+  padding: 5px 10px;
+  min-width: 19px;
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge-success { background: rgba(58, 196, 125, 0.15); color: var(--success-ink); }
+.badge-danger { background: rgba(217, 37, 80, 0.12); color: var(--danger-ink); }
+.badge-warning { background: rgba(247, 185, 36, 0.2); color: var(--warning-ink); }
+.badge-info { background: rgba(22, 170, 255, 0.14); color: var(--info-ink); }
+.badge-primary { background: var(--primary-soft); color: var(--primary-ink); }
+.badge-purple { background: rgba(121, 76, 138, 0.12); color: var(--purple-ink); }
+.badge-muted { background: var(--gray-200); color: var(--text-dim); }
+
+/* ==========================================================================
+   Tables — ArchitectUI $table-* variables
+   ========================================================================== */
+
 .table-container {
   width: 100%;
-  /* Removed min-width 600px to allow card-style stacking on mobile */
 }
 
 table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 th {
   text-align: left;
-  padding: 12px 16px;
-  font-size: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-dim);
-  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: 0.5px;
+  color: var(--gray-600);
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap;
+}
+
+thead th:first-child {
+  border-top-left-radius: var(--radius-md);
+}
+
+thead th:last-child {
+  border-top-right-radius: var(--radius-md);
 }
 
 td {
-  padding: 16px;
+  padding: 0.65rem 0.75rem;
   vertical-align: middle;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--gray-200);
   color: var(--text-main);
+  font-size: 0.85rem;
   transition: background 0.2s;
 }
 
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
 tr:hover td {
-  background: rgba(var(--accent-teal-rgb), 0.02);
+  background: var(--primary-soft);
 }
 
-[data-theme="dark"] tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+/* ==========================================================================
+   Forms — ArchitectUI form controls
+   ========================================================================== */
+
+input,
+select,
+textarea {
+  background: var(--bg-secondary);
+  border: 1px solid var(--gray-300);
+  color: var(--text-main);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  transition: var(--transition);
 }
 
-/* UNIVERSAL STACKED TABLES FOR MOBILE (No-Scroll UX) */
-@media (max-width: 768px) {
-  table, thead, tbody, th, td, tr { 
-    display: block; 
-  }
-  
-  thead tr { 
-    position: absolute;
-    top: -9999px;
-    left: -9999px;
-  }
-  
-  tr {
-    background: var(--bg-secondary);
-    border: 1px solid var(--glass-border);
-    margin-bottom: 15px;
-    border-radius: var(--radius-md);
-    padding: 10px;
-    box-shadow: var(--shadow-lg);
-  }
-  
-  td { 
-    border: none;
-    position: relative;
-    padding-left: 50% !important; 
-    text-align: right;
-    min-height: 35px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-  }
-
-  [data-theme="dark"] td {
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-  
-  td:last-child { border-bottom: 0; }
-  
-  td:before { 
-    position: absolute;
-    left: 15px;
-    width: 45%; 
-    padding-right: 10px; 
-    white-space: nowrap;
-    content: attr(data-label);
-    font-weight: 700;
-    text-align: left;
-    color: var(--accent-teal);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-  }
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-/* Desktop Enhancements (768px+) */
-@media (min-width: 768px) {
-  body { overflow: hidden; }
-
-  .dashboard-container {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    transition: grid-template-columns 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  }
-
-  .dashboard-container.sidebar-collapsed {
-    grid-template-columns: 80px 1fr;
-  }
-
-  .tool-view {
-    padding: 50px 60px;
-    height: 100vh;
-    overflow-y: auto;
-    padding-bottom: 50px;
-  }
-
-  .card {
-    padding: 30px;
-  }
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-dim);
 }
 
-/* Additional UI Elements */
-.title-section {
+select {
+  cursor: pointer;
+}
+
+label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.field {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 6px;
 }
 
-.badge {
-  padding: 6px 12px;
-  border-radius: 30px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-.badge-danger { background: rgba(244, 63, 94, 0.1); color: var(--danger); }
-.badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-.badge-info { background: rgba(8, 145, 178, 0.1); color: var(--accent-teal); }
-.badge-purple { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
-
-
-h1, h2, .gradient-text {
+.field-label {
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: -0.5px;
-  background: linear-gradient(to right, var(--text-main) 0%, var(--accent-teal) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.title-section h1 { font-size: 2.2rem; }
-
-@media (min-width: 768px) {
-  .title-section h1 { font-size: 3rem; }
-  h1, h2 { letter-spacing: -1px; }
-}
-
-/* Forms */
-input, select {
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  color: var(--text-main);
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: 16px; /* Prevent iPhone auto-zoom */
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px var(--accent-teal-soft);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
 .password-input-wrapper {
@@ -299,7 +864,7 @@ input:focus {
 }
 
 .password-input-wrapper input {
-  padding-right: 45px; /* Space for the eye icon */
+  padding-right: 45px;
 }
 
 .reveal-btn {
@@ -309,7 +874,7 @@ input:focus {
   border: none;
   cursor: pointer;
   color: var(--text-dim);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   padding: 5px;
   display: flex;
   align-items: center;
@@ -318,92 +883,225 @@ input:focus {
 }
 
 .reveal-btn:hover {
-  color: var(--accent-teal);
+  color: var(--primary);
 }
 
-/* Buttons - Large Mobile Hit Areas */
-.btn {
-  padding: 14px 28px;
-  min-height: 48px;
-  border-radius: var(--radius-md);
-  font-weight: 700;
-  cursor: pointer;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
+/* ==========================================================================
+   Grids
+   ========================================================================== */
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent-teal) 0%, #06b6d4 100%);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  box-shadow: 0 0 20px var(--accent-teal-soft);
-  transform: translateY(-1px) scale(1.02);
-}
-
-.btn-action {
-  padding: 8px 14px;
-  min-height: 36px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: all 0.2s;
-  background: var(--bg-primary);
-  color: var(--text-main);
-  border-color: var(--glass-border);
-}
-
-.btn-action:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-teal);
-  color: var(--accent-teal);
-  transform: translateY(-1px);
-}
-
-.btn-action.danger:hover {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.btn-action:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Grids */
-.grid-cols-2, .grid-cols-3 {
+.grid-cols-2,
+.grid-cols-3,
+.grid-cols-4 {
   display: grid;
   grid-template-columns: 1fr;
+  gap: 20px;
 }
 
 @media (min-width: 768px) {
-  .grid-cols-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .grid-cols-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--accent-teal); }
+/* ==========================================================================
+   Desktop shell
+   ========================================================================== */
 
-/* The analytics report is meant to be printable, so its heading only appears on
-   paper. Print rules for the report panels live in ui/ReportKit.css. */
+@media (min-width: 768px) {
+  body { overflow: hidden; }
+
+  .dashboard-container {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    transition: grid-template-columns 0.2s ease;
+  }
+
+  .dashboard-container.sidebar-collapsed {
+    grid-template-columns: var(--sidebar-width-collapsed) 1fr;
+  }
+
+  .main-content {
+    padding-top: var(--header-height);
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .tool-view {
+    padding: 30px 30px 60px;
+    gap: 24px;
+    height: auto;
+  }
+
+  .mobile-header { display: none; }
+}
+
+/* ==========================================================================
+   Auth screens
+   ========================================================================== */
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-primary);
+  position: relative;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+}
+
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.login-brand .app-header__logo {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.login-brand h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.login-brand p {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-form input {
+  width: 100%;
+  /* 16px avoids iOS Safari zooming the viewport on focus. */
+  font-size: 16px;
+}
+
+.login-error {
+  color: var(--danger-ink);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.btn-block {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* ---- Loading ---- */
+
+.loading-block {
+  text-align: center;
+}
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--primary);
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-block p {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   Scrollbars
+   ========================================================================== */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ==========================================================================
+   Universal stacked tables for mobile (no horizontal scroll)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+
+  thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  tr {
+    background: var(--bg-secondary);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  td {
+    border: none;
+    position: relative;
+    padding: 0.45rem 0 0.45rem 50% !important;
+    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 32px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  td:last-child { border-bottom: 0; }
+
+  td::before {
+    position: absolute;
+    left: 10px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    content: attr(data-label);
+    font-weight: 700;
+    text-align: left;
+    color: var(--primary);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  tr:hover td { background: transparent; }
+}
+
+/* ==========================================================================
+   Print — the analytics report is filed on paper
+   ========================================================================== */
+
 .rk-print-header { display: none; }
 
 @media print {
@@ -421,28 +1119,35 @@ input:focus {
   .sidebar,
   .bottom-nav,
   .mobile-header,
+  .app-header,
   .ai-toggle,
   .ai-chat-window,
-  .ai-proactive-bubble {
+  .proactive-bubble {
     display: none !important;
   }
 
+  .dashboard-container,
+  .main-content,
   .tool-view {
+    display: block !important;
     height: auto !important;
     overflow: visible !important;
     padding: 0 !important;
+    background: #fff !important;
   }
 }
 
-/* ---- Settings switch ---- */
+/* ==========================================================================
+   Settings switch
+   ========================================================================== */
 
 .settings-row {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 16px;
-  margin-top: 15px;
-  border: 1px solid var(--glass-border);
+  padding: 14px 16px;
+  margin-top: 14px;
+  border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
   cursor: pointer;
@@ -450,7 +1155,7 @@ input:focus {
 }
 
 .settings-row:hover {
-  border-color: var(--accent-teal);
+  border-color: var(--primary);
 }
 
 .settings-row input {
@@ -462,29 +1167,29 @@ input:focus {
 
 .settings-track {
   flex: 0 0 auto;
-  width: 46px;
-  height: 26px;
-  border-radius: 13px;
-  background: var(--glass-border);
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--gray-300);
   position: relative;
   transition: var(--transition);
   margin-top: 2px;
 }
 
 .settings-row input:checked ~ .settings-track {
-  background: var(--accent-teal);
+  background: var(--primary);
 }
 
 .settings-thumb {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #ffffff;
+  background: #fff;
   transition: var(--transition);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .settings-row input:checked ~ .settings-track .settings-thumb {
@@ -492,7 +1197,7 @@ input:focus {
 }
 
 .settings-row input:focus-visible ~ .settings-track {
-  box-shadow: 0 0 0 3px var(--accent-teal-soft);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .settings-text {
@@ -515,8 +1220,8 @@ input:focus {
   color: var(--text-dim);
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  background: var(--accent-teal-soft);
-  border-left: 3px solid var(--accent-teal);
+  background: var(--primary-soft);
+  border-left: 3px solid var(--primary);
   line-height: 1.5;
 }
 
@@ -526,10 +1231,10 @@ input:focus {
   background: var(--bg-secondary);
   padding: 1px 5px;
   border-radius: 4px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--gray-200);
 }
 
 .settings-caveat-warn {
-  background: rgba(217, 119, 6, 0.1);
-  border-left-color: var(--warning);
+  background: rgba(247, 185, 36, 0.12);
+  border-left-color: var(--warning-ink);
 }

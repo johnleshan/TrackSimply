@@ -118,114 +118,113 @@ const DashboardOverview = ({ onSelectTool }) => {
     { id: 'inventory', icon: '📦', title: 'Active Inventory', desc: 'Real-time stock monitoring with smart reorder alerts. Never run out.', stat: loading ? 'Syncing...' : `${stats.lowStock} low stock items` },
   ];
 
+const isAllTime = dateRange.start === '1970-01-01';
+
   return (
     <div className="tool-view">
-      {/* Date Range Selector */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', alignItems: 'center', padding: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD START</label>
-          <input 
-            type="date" 
-            value={dateRange.start} 
-            onChange={e => setDateRange({...dateRange, start: e.target.value})}
-            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
-          />
+      {/* Period controls */}
+      <div className="card period-bar">
+        <div className="period-bar__dates">
+          <div className="field">
+            <label className="field-label" htmlFor="dash-start">Period Start</label>
+            <input
+              id="dash-start"
+              type="date"
+              value={dateRange.start}
+              onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="dash-end">Period End</label>
+            <input
+              id="dash-end"
+              type="date"
+              value={dateRange.end}
+              onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
+            />
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PERIOD END</label>
-          <input 
-            type="date" 
-            value={dateRange.end} 
-            onChange={e => setDateRange({...dateRange, end: e.target.value})}
-            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-secondary)', color: 'var(--text-main)' }}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            className="btn" 
+
+        <div className="period-bar__actions">
+          <button
+            className={`btn ${isAllTime ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setDateRange({ start: '1970-01-01', end: '2099-12-31' })}
-            style={{ 
-              padding: '8px 15px', 
-              fontSize: '0.75rem', 
-              background: dateRange.start === '1970-01-01' ? 'var(--accent-teal-soft)' : 'rgba(255,255,255,0.05)', 
-              color: 'var(--accent-teal)', 
-              border: '1px solid var(--accent-teal)',
-              fontWeight: 700
-            }}
           >
-            SHOW ALL TIME
+            Show All Time
           </button>
-          <button 
-            className="btn" 
+          <button
+            className={`btn ${isAllTime ? 'btn-outline' : 'btn-primary'}`}
             onClick={() => setDateRange(getWeekRange())}
-            style={{ 
-              padding: '8px 15px', 
-              fontSize: '0.75rem', 
-              background: dateRange.start !== '1970-01-01' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', 
-              color: 'var(--text-dim)', 
-              border: '1px solid var(--glass-border)',
-              fontWeight: 700
-            }}
           >
-            RESET TO WEEK
+            Reset to Week
           </button>
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div style={{ textAlign: 'center', padding: '10px 0' }}>
-        <p style={{ color: 'var(--accent-teal)', fontWeight: 700, letterSpacing: '2px', marginBottom: '12px', fontSize: '0.8rem' }}>BUSINESS PERFORMANCE</p>
-        <div className="grid-cols-3" style={{ gap: '20px', marginBottom: '30px' }}>
-          <div className="card" style={{ borderLeft: '4px solid var(--success)', opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD INCOME</p>
-            <h3 style={{ color: 'var(--success)', marginTop: '5px' }}>
+      {/* Period summary */}
+      <div className="grid-cols-3">
+        <div className={`card stat-card stat-card--success ${loading ? 'is-loading' : ''}`}>
+          <div className="stat-card__body">
+            <span className="stat-card__label">Period Income</span>
+            <span className="stat-card__value" style={{ color: 'var(--success-ink)' }}>
               {loading ? '...' : `KES ${performance.income.toLocaleString()}`}
-            </h3>
-          </div>
-          <div className="card" style={{ borderLeft: '4px solid var(--danger)', opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD EXPENSES</p>
-            <h3 style={{ color: 'var(--danger)', marginTop: '5px' }}>
-              {loading ? '...' : `KES ${performance.expense.toLocaleString()}`}
-            </h3>
-          </div>
-          <div className="card" style={{ borderLeft: '4px solid var(--accent-teal)', opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>PERIOD PROFIT</p>
-            <h3 style={{ color: 'var(--accent-teal)', marginTop: '5px' }}>
-              {loading ? '...' : `KES ${stats.netProfit.toLocaleString()}`}
-            </h3>
+            </span>
           </div>
         </div>
 
-        <div className="grid-cols-2" style={{ gap: '20px', marginBottom: '20px' }}>
-          <div className="card" style={{ background: 'var(--accent-teal-soft)', textAlign: 'left' }}>
-            <p style={{ color: 'var(--accent-teal)', fontWeight: 700, fontSize: '0.75rem', marginBottom: '5px' }}>🌟 TOP PERFORMING ITEM</p>
-            <h4 style={{ color: 'var(--text-main)' }}>{performance.topItem}</h4>
+        <div className={`card stat-card stat-card--danger ${loading ? 'is-loading' : ''}`}>
+          <div className="stat-card__body">
+            <span className="stat-card__label">Period Expenses</span>
+            <span className="stat-card__value" style={{ color: 'var(--danger-ink)' }}>
+              {loading ? '...' : `KES ${performance.expense.toLocaleString()}`}
+            </span>
           </div>
-          <div className="card" style={{ background: 'rgba(239, 68, 68, 0.05)', textAlign: 'left' }}>
-            <p style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.75rem', marginBottom: '5px' }}>⚠️ UNDERPERFORMING ITEM</p>
-            <h4 style={{ color: 'var(--text-main)' }}>{performance.underItem}</h4>
+        </div>
+
+        <div className={`card stat-card stat-card--primary ${loading ? 'is-loading' : ''}`}>
+          <div className="stat-card__body">
+            <span className="stat-card__label">Period Profit</span>
+            <span className="stat-card__value" style={{ color: 'var(--primary-ink)' }}>
+              {loading ? '...' : `KES ${stats.netProfit.toLocaleString()}`}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Feature Cards Grid */}
-      <div className="grid-cols-2" style={{ gap: '20px' }}>
+      {/* Item performance */}
+      <div className="grid-cols-2">
+        <div className="card">
+          <p className="eyebrow">🌟 Top Performing Item</p>
+          <h3 className="section-value">{performance.topItem}</h3>
+        </div>
+        <div className="card">
+          <p className="eyebrow" style={{ color: 'var(--danger-ink)' }}>⚠️ Underperforming Item</p>
+          <h3 className="section-value">{performance.underItem}</h3>
+        </div>
+      </div>
+
+      {/* Shortcuts */}
+      <div className="grid-cols-2">
         {features.map(feat => (
-          <div key={feat.id} className="card" onClick={() => onSelectTool(feat.id)}
-            style={{ cursor: 'pointer', transition: 'var(--transition)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-teal)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          <div
+            key={feat.id}
+            className="card card-link feature-card"
+            onClick={() => onSelectTool(feat.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectTool(feat.id);
+              }
+            }}
           >
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div style={{ fontSize: '2.5rem', background: 'var(--accent-teal-soft)', padding: '16px', borderRadius: '14px', flexShrink: 0 }}>{feat.icon}</div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.7rem)', marginBottom: '8px', color: 'var(--text-main)' }}>{feat.title}</h2>
-                <p style={{ color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: '12px', fontSize: '0.9rem' }}>{feat.desc}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                   <span style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-teal)', fontWeight: 700 }}>
-                    {feat.stat}
-                  </span>
-                </div>
+            <div className="stat-card">
+              <div className="stat-card__icon">{feat.icon}</div>
+              <div className="stat-card__body">
+                <h3 className="feature-card__title">{feat.title}</h3>
+                <p className="section-lead">{feat.desc}</p>
+                {feat.stat && <span className="badge badge-primary feature-card__stat">{feat.stat}</span>}
               </div>
             </div>
           </div>
@@ -234,19 +233,19 @@ const DashboardOverview = ({ onSelectTool }) => {
 
       {/* Why TrackSimply */}
       <div className="card">
-        <h3 style={{ textAlign: 'center', marginBottom: '25px' }}>Why TrackSimply?</h3>
-        <div className="grid-cols-3" style={{ gap: '25px', textAlign: 'center' }}>
+        <h3 className="card-title">Why TrackSimply?</h3>
+        <div className="grid-cols-3">
           <div>
-            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>☁️ CLOUD SYNC</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>Your data is powered by Supabase. Access it from anywhere, on any device.</p>
+            <h4>☁️ Cloud Sync</h4>
+            <p className="section-lead">Your data is powered by Supabase. Access it from anywhere, on any device.</p>
           </div>
           <div>
-            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>⚡ INSTANT AUTO-SAVE</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>No delays. Every transaction is saved instantly to the cloud without effort.</p>
+            <h4>⚡ Instant Auto-Save</h4>
+            <p className="section-lead">No delays. Every transaction is saved instantly to the cloud without effort.</p>
           </div>
           <div>
-            <h4 style={{ color: 'var(--accent-teal)', marginBottom: '10px' }}>💎 PREMIUM UX</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>A sophisticated experience designed for maximum productivity and clarity.</p>
+            <h4>💎 Premium UX</h4>
+            <p className="section-lead">A sophisticated experience designed for maximum productivity and clarity.</p>
           </div>
         </div>
       </div>

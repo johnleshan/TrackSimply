@@ -151,8 +151,8 @@ const MagicAI = ({ activeTool }) => {
           <div className="chat-header">
              <div className="ai-logo-box">AI</div>
              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--ai-window-text)' }}>AI Assistant</p>
-                <p style={{ fontSize: '0.7rem', opacity: 0.7, color: 'var(--ai-window-text)' }}>Groq Intelligence</p>
+                <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#fff' }}>AI Assistant</p>
+                <p style={{ fontSize: '0.7rem', opacity: 0.75, color: '#fff' }}>Groq Intelligence</p>
              </div>
              <button className="minimize-btn" onClick={() => setIsOpen(false)}>—</button>
           </div>
@@ -184,76 +184,78 @@ const MagicAI = ({ activeTool }) => {
         </div>
       )}
 
-      <style>{`
+<style>{`
         .ai-toggle {
           position: fixed;
           bottom: 30px;
           right: 30px;
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background: var(--accent-teal);
+          width: 52px;
+          height: 52px;
+          border-radius: var(--radius-lg);
+          background: var(--primary);
           color: #fff;
           border: none;
-          font-size: 1.5rem;
+          font-family: inherit;
+          font-size: 1.35rem;
           cursor: pointer;
-          box-shadow: var(--shadow-lg);
+          box-shadow: 0 0.125rem 0.625rem rgba(63, 106, 216, 0.4);
           z-index: 10000;
-          transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+          transition: var(--transition);
           display: flex;
           align-items: center;
           justify-content: center;
         }
-        .ai-toggle:hover { transform: scale(1.1); }
-        .ai-toggle.active { background: var(--bg-secondary); color: var(--accent-teal); }
+        .ai-toggle:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .ai-toggle.active { background: var(--bg-secondary); color: var(--primary); border: 1px solid var(--primary); }
 
         .ai-chat-window {
           position: fixed;
-          bottom: 100px;
+          bottom: 96px;
           right: 30px;
           width: 380px;
-          max-height: 500px;
+          max-height: 520px;
           z-index: 9999;
           display: flex;
           flex-direction: column;
           background: var(--ai-window-bg);
           color: var(--ai-window-text);
           border-radius: var(--radius-lg);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-          border: 1px solid var(--glass-border);
+          box-shadow: var(--shadow-raised);
+          border: 1px solid var(--gray-200);
           overflow: hidden;
-          animation: slideUp 0.3s ease-out;
+          animation: slideUp 0.2s ease-out;
         }
 
         .chat-header {
-          padding: 15px 20px;
-          background: rgba(0, 0, 0, 0.1);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 12px 16px;
+          background: var(--primary);
+          color: #fff;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 11px;
         }
 
         .ai-logo-box {
-          background: var(--accent-teal);
+          background: rgba(255, 255, 255, 0.2);
           color: #fff;
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
+          width: 30px;
+          height: 30px;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: 800;
-          font-size: 0.8rem;
+          font-weight: 700;
+          font-size: 0.75rem;
+          flex: 0 0 30px;
         }
 
         .minimize-btn {
           background: none;
           border: none;
-          color: var(--ai-window-text);
-          font-size: 1.2rem;
+          color: #fff;
+          font-size: 1.1rem;
           cursor: pointer;
-          opacity: 0.5;
+          opacity: 0.7;
           transition: opacity 0.2s;
         }
         .minimize-btn:hover { opacity: 1; }
@@ -261,10 +263,10 @@ const MagicAI = ({ activeTool }) => {
         .chat-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 20px;
+          padding: 16px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
           min-height: 300px;
         }
 
@@ -272,63 +274,64 @@ const MagicAI = ({ activeTool }) => {
         .msg.user { align-items: flex-end; }
         .msg-content {
           max-width: 85%;
-          padding: 10px 14px;
-          border-radius: 14px;
+          padding: 9px 13px;
+          border-radius: var(--radius-lg);
           font-size: 0.85rem;
           line-height: 1.5;
         }
-        .user .msg-content { 
-          background: var(--ai-msg-user); 
-          color: inherit; 
-          border-bottom-right-radius: 2px; 
+        .user .msg-content {
+          background: var(--primary);
+          color: #fff;
+          border-bottom-right-radius: 2px;
         }
-        .assistant .msg-content { 
-          background: var(--ai-msg-assistant); 
-          color: inherit; 
-          border-bottom-left-radius: 2px; 
+        .assistant .msg-content {
+          background: var(--gray-100);
+          color: var(--text-body);
+          border-bottom-left-radius: 2px;
         }
+        [data-theme="dark"] .assistant .msg-content { background: rgba(255, 255, 255, 0.07); }
 
         .chat-input-area {
-          padding: 15px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 12px;
+          border-top: 1px solid var(--gray-200);
           display: flex;
-          gap: 10px;
-          background: rgba(0, 0, 0, 0.05);
+          gap: 8px;
+          background: var(--bg-secondary);
         }
-        .chat-input-area input { 
-          flex: 1; 
-          font-size: 0.85rem; 
-          padding: 10px 15px; 
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: inherit;
+        .chat-input-area input {
+          flex: 1;
+          font-size: 0.85rem;
+          padding: 9px 13px;
+          background: var(--bg-primary);
+          border: 1px solid var(--gray-300);
+          color: var(--text-main);
         }
-        .chat-input-area input::placeholder { color: inherit; opacity: 0.5; }
-        .chat-input-area .btn { padding: 8px 15px; min-height: auto; }
+        .chat-input-area input::placeholder { color: var(--text-dim); }
+        .chat-input-area .btn { padding: 8px 14px; min-height: auto; }
 
         .proactive-bubble {
           position: fixed;
           bottom: 110px;
           right: 30px;
           background: var(--bg-secondary);
-          border: 1px solid var(--accent-teal);
-          padding: 12px 20px;
-          border-radius: 30px;
+          border: 1px solid var(--primary);
+          padding: 11px 18px;
+          border-radius: var(--radius-pill);
           z-index: 10001;
           display: flex;
-          gap: 12px;
+          gap: 10px;
           align-items: center;
-          box-shadow: var(--shadow-lg);
-          animation: slideLeft 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+          box-shadow: var(--shadow-raised);
+          animation: slideLeft 0.3s ease-out;
         }
 
         @keyframes slideLeft {
-          from { transform: translateX(50px); opacity: 0; }
+          from { transform: translateX(30px); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
 
-        .insight-icon { font-size: 1.2rem; }
-        .insight-text { font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+        .insight-icon { font-size: 1.1rem; }
+        .insight-text { font-size: 0.84rem; font-weight: 600; color: var(--text-main); }
 
         .thinking { display: flex; align-items: center; padding: 10px 0; }
         .dot-pulse {
@@ -337,23 +340,23 @@ const MagicAI = ({ activeTool }) => {
           width: 6px;
           height: 6px;
           border-radius: 3px;
-          background-color: var(--accent-teal);
-          color: var(--accent-teal);
-          box-shadow: 9999px 0 0 -5px var(--accent-teal);
+          background-color: var(--primary);
+          color: var(--primary);
+          box-shadow: 9999px 0 0 -5px var(--primary);
           animation: dotPulse 1.5s infinite linear;
           animation-delay: 0.25s;
         }
 
         @keyframes dotPulse {
-          0% { box-shadow: 9999px 0 0 -5px var(--accent-teal); }
-          30% { box-shadow: 9999px 0 0 2px var(--accent-teal); }
-          60%, 100% { box-shadow: 9999px 0 0 -5px var(--accent-teal); }
+          0% { box-shadow: 9999px 0 0 -5px var(--primary); }
+          30% { box-shadow: 9999px 0 0 2px var(--primary); }
+          60%, 100% { box-shadow: 9999px 0 0 -5px var(--primary); }
         }
 
         @media (max-width: 768px) {
           .ai-chat-window { width: calc(100% - 40px); right: 20px; bottom: 85px; }
-          .ai-toggle { bottom: 85px; right: 20px; width: 50px; height: 50px; }
-          .proactive-bubble { bottom: 145px; right: 20px; }
+          .ai-toggle { bottom: 85px; right: 20px; width: 46px; height: 46px; }
+          .proactive-bubble { bottom: 142px; right: 20px; }
         }
       `}</style>
     </>
