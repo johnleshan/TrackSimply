@@ -86,7 +86,7 @@ const SlideDots = ({ index, onSelect }) => {
  * Login
  * ------------------------------------------------------------------ */
 
-export default function LoginScreen() {
+export default function LoginScreen({ onBack }) {
   const { login } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -223,6 +223,14 @@ export default function LoginScreen() {
             Accounts are created by an administrator. If you need access, ask the person who
             set up your workspace.
           </p>
+
+          {/* Optional escape hatch back to the public landing page. Renders nothing
+              (and changes nothing) when no onBack callback is passed. */}
+          {onBack && (
+            <button type="button" className="k-back" onClick={onBack}>
+              ← Back
+            </button>
+          )}
         </div>
       </section>
 

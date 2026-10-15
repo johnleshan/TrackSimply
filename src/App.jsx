@@ -14,6 +14,7 @@ import { getUnseenVersions } from './lib/whatsNew';
 import { useAuth } from './context/AuthContext';
 import { loadSettings } from './lib/appSettings';
 import LoginScreen, { LoadingScreen } from './components/LoginScreen';
+import Landing from './components/Landing';
 
 const TOOL_TITLES = {
   overview: 'Dashboard',
@@ -116,6 +117,8 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('tracksimply_theme') || 'light');
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [unseenWhatsNew, setUnseenWhatsNew] = useState(() => getUnseenVersions());
+  // Public gate: marketing landing first; "Step inside" swaps in the sign-in.
+  const [showLogin, setShowLogin] = useState(false);
 
   // Open once by itself when the visitor signs in and there is an unread
   // release. Cannot blaze past unnoticed, but also never interrupts your work.
@@ -180,7 +183,11 @@ function App() {
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return showLogin ? (
+      <LoginScreen onBack={() => setShowLogin(false)} />
+    ) : (
+      <Landing onStepInside={() => setShowLogin(true)} />
+    );
   }
 
   return (

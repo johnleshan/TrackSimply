@@ -555,3 +555,24 @@ body:has(.k-page) {
     font-size: 14px;
   }
 }
+
+/* Optional "back to landing" escape hatch — only rendered when App passes an
+   onBack callback, so the standalone sign-in is unchanged. */
+.k-back {
+  margin-top: 20px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--k-text-3);
+  transition: color 0.2s ease;
+}
+
+.k-back:hover {
+  color: var(--k-text-2);
+}
