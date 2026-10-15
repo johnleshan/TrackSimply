@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { chatWithAI } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { fetchAllRows } from '../lib/pagedFetch';
 
 const MagicAI = ({ activeTool }) => {
   const { user } = useAuth();
@@ -49,11 +50,15 @@ const MagicAI = ({ activeTool }) => {
         const isAdmin = ['admin', 'superadmin'].includes(user?.role);
 
         // Snapshots for analysis
-        let invQuery = supabase.from('inventory').select('name, stock, reorder').eq('user_id', user.id);
-        const { data: inventory } = await invQuery;
+        const { data: inventory } = await fetchAllRows('inventory', {
+          columns: 'name, stock, reorder',
+          eq: { user_id: userId },
+        });
 
-        let budQuery = supabase.from('budgets').select('budget, actual').eq('user_id', user.id);
-        const { data: budgets } = await budQuery;
+        const { data: budgets } = await fetchAllRows('budgets', {
+          columns: 'budget, actual',
+          eq: { user_id: userId },
+        });
 
         let insight = null;
         

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { summarize, byCategory } from '../lib/analytics';
+import { fetchAllRows } from '../lib/pagedFetch';
 import { toIsoDate } from '../lib/format';
 
 /**
@@ -140,11 +141,15 @@ const toolExecutors = {
    * the tokens.
    */
   get_financial_data: async (args, userId) => {
+    // Paged reads. A single select() stops at PostgREST's 1,000-row cap, which
+    // on this database means the assistant would report 1,000 transactions and
+    // understate every total, while looking entirely healthy. See
+    // src/lib/pagedFetch.js.
     const [debtsRes, txRes, budgetsRes, inventoryRes] = await Promise.all([
-      supabase.from('debts').select('*').eq('user_id', userId),
-      supabase.from('transactions').select('*').eq('user_id', userId),
-      supabase.from('budgets').select('*').eq('user_id', userId),
-      supabase.from('inventory').select('*').eq('user_id', userId),
+      fetchAllRows('debts', { eq: { user_id: userId } }),
+      fetchAllRows('transactions', { eq: { user_id: userId } }),
+      fetchAllRows('budgets', { eq: { user_id: userId } }),
+      fetchAllRows('inventory', { eq: { user_id: userId } }),
     ]);
 
     const transactions = txRes.data || [];

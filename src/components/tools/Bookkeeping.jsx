@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { fetchAllRows } from '../../lib/pagedFetch';
 import { runLegacyMigration } from '../../lib/legacyMigration';
 import { useAiSync } from '../../lib/useAiSync';
 
@@ -38,25 +39,20 @@ const Bookkeeping = () => {
 
   const fetchTransactions = async () => {
     setLoading(true);
-    let txQuery = supabase.from('transactions').select('*').order('date', { ascending: false });
-    let vehQuery = supabase.from('vehicles').select('*').order('reg_no', { ascending: true });
-    let invQuery = supabase.from('inventory').select('*').order('name', { ascending: true });
 
-    if (user.role !== 'superadmin') {
-      txQuery = txQuery.eq('user_id', user.id);
-      vehQuery = vehQuery.eq('user_id', user.id);
-      invQuery = invQuery.eq('user_id', user.id);
-    }
+    // Paged, because a single select stops at PostgREST's 1,000-row cap and
+    // this table is well past that. See src/lib/pagedFetch.js.
+    const scope = user.role === 'superadmin' ? {} : { user_id: user.id };
 
-    const { data: txs, error: txError } = await txQuery;
-    const { data: vehs, error: vehError } = await vehQuery;
-    const { data: inv, error: invError } = await invQuery;
-    
-    if (!txError && txs) {
-      setAllTransactions(txs);
-    }
-    if (!vehError && vehs) setVehicles(vehs);
-    if (!invError && inv) setInventoryItems(inv);
+    const [txRes, vehRes, invRes] = await Promise.all([
+      fetchAllRows('transactions', { ...scope, order: { date: { ascending: false } } }),
+      fetchAllRows('vehicles', { ...scope, order: { reg_no: { ascending: true } } }),
+      fetchAllRows('inventory', { ...scope, order: { name: { ascending: true } } }),
+    ]);
+
+    if (!txRes.error && txRes.data) setAllTransactions(txRes.data);
+    if (!vehRes.error && vehRes.data) setVehicles(vehRes.data);
+    if (!invRes.error && invRes.data) setInventoryItems(invRes.data);
     setLoading(false);
   };
 
