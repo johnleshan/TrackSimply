@@ -9,6 +9,8 @@ import Analytics from './components/tools/Analytics';
 import InventoryTracker from './components/tools/InventoryTracker';
 import VehicleManagement from './components/tools/VehicleManagement';
 import AccountManager from './components/tools/AccountManager';
+import WhatsNew, { WhatsNewButton } from './components/WhatsNew';
+import { getUnseenVersions } from './lib/whatsNew';
 import { useAuth } from './context/AuthContext';
 import { loadSettings } from './lib/appSettings';
 import LoginScreen, { LoadingScreen } from './components/LoginScreen';
@@ -35,6 +37,25 @@ const ThemeButton = ({ theme, toggleTheme }) => (
   </button>
 );
 
+/* ✨ opens the What's New panel. Pass an OPEN callback, not a boolean, so the
+   header markup is identical whether the panel is mounted or not. */
+const HeaderActions = ({ theme, toggleTheme, user, onOpenWhatsNew, unseenCount, children }) => (
+  <>
+    {user && (
+      <div className="app-header__user">
+        <div className="app-header__avatar">{(user.username || 'G').slice(0, 2)}</div>
+        <div className="app-header__user-meta">
+          <span className="app-header__user-name">{user.username || 'Guest'}</span>
+          <span className="app-header__user-role">{user.role}</span>
+        </div>
+      </div>
+    )}
+    {children}
+    <WhatsNewButton unseenCount={unseenCount} onOpen={onOpenWhatsNew} />
+    <ThemeButton theme={theme} toggleTheme={toggleTheme} />
+  </>
+);
+
 /* Icons are inline SVG rather than glyphs: the previous ⏻ character is absent
    from the Windows system font stack and rendered as an empty box. */
 const LogoutIcon = () => (
@@ -52,14 +73,14 @@ const LogoutButton = ({ logout }) => (
   </button>
 );
 
-const MobileHeader = ({ title, theme, toggleTheme, logout }) => (
+const MobileHeader = ({ title, theme, toggleTheme, logout, user, onOpenWhatsNew, unseenCount }) => (
   <header className="mobile-header">
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
       <div className="mobile-brand-logo">TS</div>
       <span className="current-view-title">{title}</span>
     </div>
     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-      <ThemeButton theme={theme} toggleTheme={toggleTheme} />
+      <HeaderActions theme={theme} toggleTheme={toggleTheme} user={user} onOpenWhatsNew={onOpenWhatsNew} unseenCount={unseenCount} />
       <LogoutButton logout={logout} />
     </div>
   </header>
@@ -67,7 +88,7 @@ const MobileHeader = ({ title, theme, toggleTheme, logout }) => (
 
 /* Fixed 60px header: brand cell lines up with the sidebar, page title sits in
    the template's inset strip, actions dock to the right. */
-const AppHeader = ({ title, theme, toggleTheme, logout, isCollapsed, user }) => (
+const AppHeader = ({ title, theme, toggleTheme, logout, isCollapsed, user, onOpenWhatsNew, unseenCount }) => (
   <header className="app-header">
     <div className="app-header__brand">
       <div className="app-header__logo">TS</div>
@@ -81,16 +102,7 @@ const AppHeader = ({ title, theme, toggleTheme, logout, isCollapsed, user }) => 
     </div>
 
     <div className="app-header__actions">
-      {user && (
-        <div className="app-header__user">
-          <div className="app-header__avatar">{(user.username || 'G').slice(0, 2)}</div>
-          <div className="app-header__user-meta">
-            <span className="app-header__user-name">{user.username || 'Guest'}</span>
-            <span className="app-header__user-role">{user.role}</span>
-          </div>
-        </div>
-      )}
-      <ThemeButton theme={theme} toggleTheme={toggleTheme} />
+      <HeaderActions theme={theme} toggleTheme={toggleTheme} user={user} onOpenWhatsNew={onOpenWhatsNew} unseenCount={unseenCount} />
       <LogoutButton logout={logout} />
     </div>
   </header>
@@ -102,6 +114,24 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [theme, setTheme] = useState(localStorage.getItem('tracksimply_theme') || 'light');
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
+  const [unseenWhatsNew, setUnseenWhatsNew] = useState(() => getUnseenVersions());
+
+  // Open once by itself when the visitor signs in and there is an unread
+  // release. Cannot blaze past unnoticed, but also never interrupts your work.
+  useEffect(() => {
+    const unseen = getUnseenVersions();
+    setUnseenWhatsNew(unseen);
+    if (user && unseen.length > 0) {
+      const t = setTimeout(() => setIsWhatsNewOpen(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, [user]);
+
+  const closeWhatsNew = () => {
+    setIsWhatsNewOpen(false);
+    setUnseenWhatsNew(getUnseenVersions());
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -163,6 +193,8 @@ function App() {
           logout={logout}
           isCollapsed={isSidebarCollapsed}
           user={user}
+          onOpenWhatsNew={() => setIsWhatsNewOpen(true)}
+          unseenCount={unseenWhatsNew.length}
         />
       )}
 
@@ -175,12 +207,26 @@ function App() {
       />
 
       {isMobile && (
-        <MobileHeader title={getToolTitle()} theme={theme} toggleTheme={toggleTheme} logout={logout} />
+        <MobileHeader
+          title={getToolTitle()}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          logout={logout}
+          user={user}
+          onOpenWhatsNew={() => setIsWhatsNewOpen(true)}
+          unseenCount={unseenWhatsNew.length}
+        />
       )}
 
       <main className="main-content">
         {renderTool()}
       </main>
+
+      <WhatsNew
+        unseenVersions={unseenWhatsNew}
+        open={isWhatsNewOpen}
+        onClose={closeWhatsNew}
+      />
 
       <MagicAI activeTool={activeTool} />
     </div>
