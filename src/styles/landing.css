@@ -450,29 +450,40 @@ body:has(.tl-root) {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* Was 12px between 6px dots: a row of specks that read as dirt on the
+     colour block rather than as slide position. */
+  gap: 18px;
+  padding: 10px 16px;
   z-index: 20;
 }
 
 .tl-root .tl-dot {
-  width: 6px;
-  height: 6px;
+  /* Was 6px — invisible at a glance and easy to mistake for dust on the
+     colour block. 16px reads as a deliberate control; POPH's spec calls these
+     6px hero dots, but at this stage size that is not what the visitor sees. */
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: var(--dot-c);
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: pointer;
+  /* Each dot is filled with the voltage of the slide it jumps to, so on a lime
+     background a lime dot vanished. The dark ring keeps every control legible
+     on all four fills. */
+  box-shadow: 0 0 0 2px var(--tl-black);
   transition: transform 260ms var(--tl-ease), opacity 260ms var(--tl-ease);
 }
 
 .tl-root .tl-dot.is-active {
   opacity: 1;
-  transform: scale(1.7);
+  transform: scale(1.45);
 }
 
 .tl-root .tl-dot:hover {
   opacity: 0.85;
+  transform: scale(1.15);
 }
 
 /* vertical scroll cue */

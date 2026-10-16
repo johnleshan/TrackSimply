@@ -54,16 +54,51 @@ function starClip(points = 18, inner = 0.62) {
 
 const STICKER_CLIP = starClip(20, 0.64);
 
-const utcClock = () => new Date().toISOString().slice(11, 19);
+/*
+ * The clock shows the VISITOR's own time, not UTC.
+ *
+ * It read toISOString().slice(11,19) and labelled it "UTC". Correct as UTC,
+ * useless as a product: the machine is on EAT (UTC+3), so the page displayed
+ * 11:03 while the clock on the desk said 14:03, and the obvious conclusion was
+ * that the time was broken. A landing page's "real-time" line should agree with
+ * the wristwatch, so it now reads local time and names the zone it resolved to.
+ * Visitors genuinely in UTC still see UTC, correctly labelled.
+ */
+const localClock = () =>
+  new Date().toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 
-/* Live UTC clock, ticks every second. */
+const timeZoneLabel = () => {
+  try {
+    const parts = new Intl.DateTimeFormat([], { timeZoneName: 'short' }).formatToParts(new Date());
+    return parts.find((p) => p.type === 'timeZoneName')?.value || 'Local';
+  } catch {
+    return 'Local';
+  }
+};
+
+/* Live clock, ticks every second. */
 function Clock({ className = '' }) {
-  const [now, setNow] = useState(utcClock);
+  const [now, setNow] = useState(localClock);
+  const [zone, setZone] = useState(timeZoneLabel);
+
   useEffect(() => {
-    const id = setInterval(() => setNow(utcClock()), 1000);
+    const id = setInterval(() => {
+      setNow(localClock());
+      setZone(timeZoneLabel());
+    }, 1000);
     return () => clearInterval(id);
   }, []);
-  return <span className={className}>{now}</span>;
+
+  return (
+    <span className={className}>
+      {now} <span className={`${className}-zone`}>{zone}</span>
+    </span>
+  );
 }
 
 /* ------------------------------------------------------------------ *
@@ -769,7 +804,7 @@ function Footer() {
     <footer className="tl-footer">
       <div className="tl-colophon">
         <span className="tl-colophon__item">
-          Real-time · <Clock className="tl-clock" /> UTC
+          Real-time · <Clock className="tl-clock" />
         </span>
         <span className="tl-colophon__item">Hand-built · One ledger, held still</span>
       </div>
