@@ -4,15 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0891b2" />
-    <!-- Landing page typography (Instrument Serif + JetBrains Mono). Loaded
-         app-globally, but only rendered on the public landing. -->
+    <meta name="theme-color" content="#0D0D0D" />
+    <!-- Landing page typography. Bebas Neue carries the poster-scale display
+         type; Space Grotesk carries the UI and body copy. One request, swap on
+         load so the first paint is never blocked by a font. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- GSAP 3.12.5 + ScrollTrigger, loaded from CDN (deferred, so they never
+         block first paint). The landing feature-detects them at runtime and
+         degrades to a static, reduced-motion page if they are unavailable. -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
     <title>TrackSimply | Business Bookkeeping &amp; Analytics</title>
     <meta name="description" content="Bookkeeping, debt tracking, budgeting, inventory, fleet and business analytics in one place." />
   </head>

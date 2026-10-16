@@ -2,30 +2,61 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import '../styles/landing.css';
 
 /* ==================================================================== *
- * TrackSimply landing — adapted from the "Vesper" editorial design.
+ * TrackSimply landing — zine / brutalist editorial.
  *
- * A near-black, gallery-style page presented before sign-in. All motion is
- * hand-rolled (IntersectionObserver reveals, rAF lerp pointer parallax,
- * scroll-bound word reveal, count-ups) — no animation dependencies.
+ * Loud, flat, square. Poster-scale Bebas Neue against Space Grotesk, four
+ * "voltage" colours on a near-black canvas, hard offset shadows and a
+ * 0-radius geometry throughout.
  *
- * Every effect below registers its cleanup; when the landing unmounts the
- * grain/vignette overlays and all listeners go with it.
+ * Motion is GSAP 3.12.5 + ScrollTrigger, loaded from a CDN in index.html.
+ * If the CDN is unreachable, or the visitor prefers reduced motion, the page
+ * falls back to a static, fully-legible layout rather than a broken one.
+ *
+ * Everything lives under `.tl-root` with `tl-` classes so nothing leaks into
+ * the signed-in app. The grain overlay and every listener are mounted with
+ * this component and removed with it.
  * ==================================================================== */
 
-const LOADER_KEY = 'tl_loader_seen';
+/* ------------------------------------------------------------------ *
+ * Tokens / small helpers
+ * ------------------------------------------------------------------ */
+
+const VOLT = {
+  orange: '#FF6B1A',
+  pink: '#FF2D78',
+  lime: '#BFFF00',
+  blue: '#0057FF',
+};
+
+const INK = '#F5F0E8';
+const BLACK = '#0D0D0D';
+
+/* Bright voltages take black type (highest contrast); the deep blue takes
+   off-white. This keeps every block legible rather than merely loud. */
+const onVoltage = (key) => (key === 'blue' ? INK : BLACK);
 
 const prefersReduced = () =>
   typeof window !== 'undefined' &&
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ------------------------------------------------------------------ *
- * Shared atoms
- * ------------------------------------------------------------------ */
+/* A die-cut starburst as a percentage clip-path. */
+function starClip(points = 18, inner = 0.62) {
+  const pts = [];
+  const total = points * 2;
+  for (let i = 0; i < total; i += 1) {
+    const r = i % 2 === 0 ? 50 : 50 * inner;
+    const a = (Math.PI * i) / points - Math.PI / 2;
+    pts.push(`${(50 + r * Math.cos(a)).toFixed(2)}% ${(50 + r * Math.sin(a)).toFixed(2)}%`);
+  }
+  return `polygon(${pts.join(', ')})`;
+}
+
+const STICKER_CLIP = starClip(20, 0.64);
 
 const utcClock = () => new Date().toISOString().slice(11, 19);
 
-/* Live mono clock, ticks every second. Used in the hero footbar and footer. */
+/* Live UTC clock, ticks every second. */
 function Clock({ className = '' }) {
   const [now, setNow] = useState(utcClock);
   useEffect(() => {
@@ -35,44 +66,16 @@ function Clock({ className = '' }) {
   return <span className={className}>{now}</span>;
 }
 
-/* Mono label with the pulsing 6px accent dot. */
-function Eyebrow({ children }) {
-  return (
-    <p className="tl-eyebrow">
-      <span className="tl-eyebrow__dot" aria-hidden="true" />
-      <span className="tl-eyebrow__text">{children}</span>
-    </p>
-  );
-}
-
-/* Headline words wrapped for the clip-rise entrance (triggered by
-   `.is-ready` on the root once the loader has faded). */
-function RiseWords({ text, italic = false, base = 0 }) {
-  const words = text.split(' ');
-  return (
-    <span className={`tl-rise${italic ? ' tl-rise--italic' : ''}`} aria-label={text}>
-      {words.map((word, i) => (
-        <span key={`${word}-${i}`} className="tl-rise__word" aria-hidden="true">
-          <span className="tl-rise__inner" style={{ transitionDelay: `${base + i * 90}ms` }}>
-            {word}
-          </span>
-        </span>
-      ))}
-    </span>
-  );
-}
-
 /* ------------------------------------------------------------------ *
- * Overlays: film grain + breathing vignette (mounted with the landing,
- * gone when it unmounts)
+ * Overlays — grain + vignette, mounted/unmounted with the landing
  * ------------------------------------------------------------------ */
 
-function FilmGrain() {
+function Overlays() {
   return (
     <>
       <svg className="tl-grain" aria-hidden="true" focusable="false">
         <filter id="tl-grain-filter">
-          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch" />
           <feColorMatrix type="saturate" values="0" />
         </filter>
         <rect width="100%" height="100%" filter="url(#tl-grain-filter)" />
@@ -83,68 +86,7 @@ function FilmGrain() {
 }
 
 /* ------------------------------------------------------------------ *
- * Loader — counts 00 → 100 on first visit per browser session
- * ------------------------------------------------------------------ */
-
-function Loader({ onDone }) {
-  const [count, setCount] = useState(0);
-  const [coords, setCoords] = useState('0.00000 · 0.00000 · KES');
-  const [fading, setFading] = useState(false);
-
-  useEffect(() => {
-    const reduced = prefersReduced();
-    const duration = reduced ? 60 : 2200;
-    const fadeAfter = reduced ? 120 : 1100;
-    let raf = 0;
-    let scrambler = 0;
-    let doneTimer = 0;
-    const start = performance.now();
-    /* ease-out cubic — a close match for cubic-bezier(0.22, 1, 0.36, 1) */
-    const ease = (t) => 1 - Math.pow(1 - t, 3);
-
-    const tick = (now) => {
-      const t = Math.min(1, (now - start) / duration);
-      setCount(Math.round(ease(t) * 100));
-      if (t < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        setFading(true);
-        doneTimer = setTimeout(onDone, fadeAfter);
-      }
-    };
-
-    if (!reduced) {
-      scrambler = setInterval(() => {
-        const seed = () => (Math.random() * (Math.random() < 0.5 ? 3.5 : 45)).toFixed(5);
-        const tags = ['KES', 'NAIROBI', 'UTC+3', 'LEDGER'];
-        setCoords(`${seed()} · ${seed()} · ${tags[Math.floor(Math.random() * tags.length)]}`);
-      }, 85);
-    }
-
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      clearInterval(scrambler);
-      clearTimeout(doneTimer);
-    };
-  }, [onDone]);
-
-  return (
-    <div className={`tl-loader${fading ? ' is-fading' : ''}`} aria-hidden="true">
-      <div className="tl-loader__inner">
-        <span className="tl-loader__label">— Locating —</span>
-        <span className="tl-loader__count">{String(count).padStart(2, '0')}</span>
-        <div className="tl-loader__track">
-          <span className="tl-loader__fill" style={{ width: `${count}%` }} />
-        </div>
-        <span className="tl-loader__coords">{coords}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Hero
+ * Nav — transparent over the hero, glass after the first scroll
  * ------------------------------------------------------------------ */
 
 const NAV_LINKS = [
@@ -152,529 +94,875 @@ const NAV_LINKS = [
   { label: 'Method', target: 'tl-method' },
 ];
 
-function Hero({ onStepInside }) {
-  const goto = (e, target) => {
-    e.preventDefault();
-    const el = document.getElementById(target);
-    if (!el) return;
-    el.scrollIntoView({ behavior: prefersReduced() ? 'instant' : 'smooth', block: 'start' });
-  };
-
+function Nav({ glass, ink, onBegin, onJump }) {
   return (
-    <section className="tl-hero">
-      <header className="tl-hero__topbar">
-        <div className="tl-topbar__brand tl-wordmark">TrackSimply</div>
-        <div className="tl-topbar__edition tl-label">Edition 001 · V 1.1.0</div>
-        <nav className="tl-topbar__nav" aria-label="Primary">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              className="tl-nav__link"
-              href={`#${link.target}`}
-              onClick={(e) => goto(e, link.target)}
-            >
-              {link.label}
-            </a>
-          ))}
-          <button type="button" className="tl-nav__link tl-nav__link--begin" onClick={onStepInside}>
-            Begin
-          </button>
-        </nav>
-      </header>
-
-      <div className="tl-hero__mid">
-        <Eyebrow>Designation · Small Business Ledgers · KES</Eyebrow>
-
-        <h1 className="tl-hero__headline tl-display">
-          <span className="tl-hero__line">
-            <RiseWords text="Not records." base={0} />
-          </span>
-          <span className="tl-hero__line tl-hero__line--italic">
-            <RiseWords text="Reports." base={260} italic />
-          </span>
-        </h1>
-
-        <div className="tl-hero__stage">
-          <div className="tl-frame" aria-hidden="true">
-            <span className="tl-frame__tick tl-frame__tick--tl" />
-            <span className="tl-frame__tick tl-frame__tick--tr" />
-            <span className="tl-frame__tick tl-frame__tick--bl" />
-            <span className="tl-frame__tick tl-frame__tick--br" />
-          </div>
-          {/* Porthole on a moonlit business horizon — pure CSS gradients. */}
-          <div className="tl-port" aria-hidden="true">
-            <div className="tl-port__art" data-tl-drift>
-              <span className="tl-port__sky" />
-              <span className="tl-port__haze" />
-              <span className="tl-port__glow" data-tl-parallax data-tl-depth="4" />
-              <span className="tl-port__moon" data-tl-parallax data-tl-depth="8" />
-              <span className="tl-port__ridge" data-tl-parallax data-tl-depth="12" />
-              <span className="tl-port__hills" data-tl-parallax data-tl-depth="17" />
-              <span className="tl-port__fog" />
-              <span className="tl-port__grid" />
-            </div>
-          </div>
-        </div>
-
-        <p className="tl-hero__sub tl-body">
-          A bookkeeping desk that keeps your numbers: transactions, debts, budgets, stock and a fleet
-          in one place — with an assistant that answers in plain speech.
-        </p>
-
-        <button type="button" className="tl-cta" onClick={onStepInside}>
-          Step inside <span className="tl-cta__arrow">→</span>
+    <header
+      className={`tl-nav${glass ? ' is-glass' : ''}`}
+      style={{ '--nav-ink': glass ? INK : ink }}
+    >
+      <span className="tl-nav__logo tl-display">TrackSimply</span>
+      <nav className="tl-nav__links" aria-label="Primary">
+        {NAV_LINKS.map((link) => (
+          <a
+            key={link.label}
+            className="tl-nav__link"
+            href={`#${link.target}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onJump(link.target);
+            }}
+          >
+            {link.label}
+          </a>
+        ))}
+        <button type="button" className="tl-nav__link tl-nav__link--begin" onClick={onBegin}>
+          Begin
         </button>
-      </div>
-
-      <footer className="tl-hero__footbar">
-        <span className="tl-label">−0.29213 · 36.08030 · Nairobi</span>
-        <span className="tl-label">
-          Real-time · <Clock className="tl-clock" /> UTC
-        </span>
-      </footer>
-    </section>
+      </nav>
+    </header>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Manifesto — scroll-bound per-word reveal over a 250vh runway
+ * Hero — four voltage slides, scroll-hijacked
  * ------------------------------------------------------------------ */
 
-const MANIFESTO =
-  'A ledger should behave like a ledger. Every number traceable, every entry exactly once, no row hidden behind a pagination cap. TrackSimply is built to be trusted with the client’s money — so it counts everything and shows its work.';
-
-function Manifesto() {
-  return (
-    <section className="tl-manifesto">
-      <div className="tl-manifesto__pin">
-        <p className="tl-manifesto__text tl-manifesto-type" aria-label={MANIFESTO}>
-          {MANIFESTO.split(' ').map((word, i) => (
-            <span key={`${word}-${i}`} className="tl-word--m" aria-hidden="true">
-              {word}
-            </span>
-          ))}
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Selected works → "The Instruments" (five asymmetric plates)
- * ------------------------------------------------------------------ */
-
-const PLATES = [
+/*
+ * Each slide carries its OWN screenshot of the real app.
+ *
+ * The porthole previously rendered /screenshots/dashboard.png on all four
+ * slides, so the colour and the copy changed while the product never did — the
+ * one thing a product page exists to avoid. The slide is about a different
+ * claim, so it shows a different screen.
+ */
+const SLIDES = [
   {
-    numeral: 'I',
-    title: 'Bookkeeping',
-    desc: 'Every shilling accounted — income, expense, source and fleet on one line.',
-    meta: 'Plate 01 · MMXXVI · REST + POSTGRES',
-    span: 'p1',
+    key: 'orange',
+    tag: 'Business bookkeeping, plainly.',
+    kicker: 'One ledger, held still',
+    btn: 'Shop Now',
+    img: '/screenshots/bookkeeping.png',
+    view: 'Bookkeeping',
   },
   {
-    numeral: 'II',
-    title: 'Analytics',
-    desc: 'Charts that explain themselves — pulse tooltips, print-ready.',
-    meta: 'Plate 02 · MMXXVI · SVG CHARTS',
-    span: 'p2',
+    key: 'pink',
+    tag: 'Every shilling, every row. No page left behind.',
+    kicker: 'Books that behave like books',
+    btn: 'Get Started →',
+    img: '/screenshots/analytics.png',
+    view: 'Analytics',
   },
   {
-    numeral: 'III',
-    title: 'Budget Planner',
-    desc: 'Spending against targets while it happens.',
-    meta: 'Plate 03 · MMXXVI · BURN RATE',
-    span: 'p3',
+    key: 'lime',
+    tag: 'Snapshot before. Snapshot after. Nothing moves without a reason.',
+    kicker: 'Verified by construction',
+    btn: 'Get Started →',
+    img: '/screenshots/dashboard.png',
+    view: 'Dashboard',
   },
   {
-    numeral: 'IV',
-    title: 'Debt Tracker',
-    desc: 'What is owed, and when it clears.',
-    meta: 'Plate 04 · MMXXVI · RECONCILE',
-    span: 'p4',
-  },
-  {
-    numeral: 'V',
-    title: 'Inventory & Fleet',
-    desc: 'Stock and vehicles in the same breath.',
-    meta: 'Plate 05 · MMXXVI · MOVEMENT',
-    span: 'p5',
+    key: 'blue',
+    tag: 'Live mode is read-only. The AI key never reaches your browser.',
+    kicker: 'Safe to look, safe to leave',
+    btn: 'Get Started →',
+    img: '/screenshots/inventory.png',
+    view: 'Inventory & Fleet',
   },
 ];
 
-function Plate({ plate, i, onStepInside }) {
+/*
+ * Slide pacing.
+ *
+ * The hero used to advance on a single wheel tick and unlocked the instant the
+ * tween finished, so one flick of a trackpad scrolled past two or three slides
+ * and nothing was legible. Worse, the copy and the colour changed while the
+ * screenshot stayed on Dashboard, so the product looked identical across four
+ * different claims.
+ *
+ * Two changes: each slide now shows the screen it is talking about, and
+ * advancing now costs deliberate effort and then holds.
+ *
+ *   SLIDE_MS     how long the wipe takes. Longer than the flick that triggers
+ *                it, so input during a transition is ignored rather than queued.
+ *   DWELL_MS     after a transition settles, the hero refuses further input.
+ *                This is the read time — the whole point of the hijack is that
+ *                each slide is seen, not skimmed.
+ *   WHEEL_GATE   accumulated wheel delta needed to commit a move. A trackpad
+ *                emits many small deltas per flick, so without a threshold one
+ *                gesture equals several slides.
+ */
+const SLIDE_MS = 0.95;
+const DWELL_MS = 1100;
+const WHEEL_GATE = 140;
+
+function Hero({ onStepInside }) {
+  const [index, setIndex] = useState(0);
+  const [glass, setGlass] = useState(false);
+  const indexRef = useRef(0);
+  const lockedRef = useRef(false);
+  const slideRefs = useRef([]);
+  const gateRef = useRef(0);
+
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
+
+  /* Nav glass after the first scroll. */
+  useEffect(() => {
+    const onScroll = () => setGlass(window.scrollY > 40);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const animateTo = useCallback((next, dir) => {
+    const from = slideRefs.current[indexRef.current];
+    const to = slideRefs.current[next];
+    if (!from || !to) return;
+
+    const gsap = window.gsap;
+    if (!gsap || prefersReduced()) {
+      slideRefs.current.forEach((el, i) => {
+        if (!el) return;
+        el.style.visibility = i === next ? 'visible' : 'hidden';
+        el.style.clipPath = 'none';
+        el.style.zIndex = i === next ? 3 : 1;
+      });
+      indexRef.current = next;
+      setIndex(next);
+      return;
+    }
+
+    lockedRef.current = true;
+    const enterFrom = dir >= 0 ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)';
+    gsap.set(to, { visibility: 'visible', zIndex: 3, clipPath: enterFrom });
+    gsap.set(from, { zIndex: 2, clipPath: 'inset(0 0 0 0)' });
+
+    const dwellTimer = setTimeout(() => {
+      lockedRef.current = false;
+    }, SLIDE_MS * 1000 + DWELL_MS);
+
+    gsap
+      .timeline({
+        defaults: { duration: SLIDE_MS, ease: 'power3.inOut' },
+        onComplete: () => {
+          gsap.set(from, { visibility: 'hidden', clipPath: 'inset(0 0 0 0)' });
+          gsap.set(to, { clipPath: 'inset(0 0 0 0)' });
+        },
+        onInterrupt: () => clearTimeout(dwellTimer),
+      })
+      .to(to, { clipPath: 'inset(0 0 0 0)' }, 0);
+
+    indexRef.current = next;
+    setIndex(next);
+  }, []);
+
+  const goNext = useCallback(() => {
+    if (lockedRef.current || indexRef.current >= SLIDES.length - 1) return;
+    animateTo(indexRef.current + 1, 1);
+  }, [animateTo]);
+
+  const goPrev = useCallback(() => {
+    if (lockedRef.current || indexRef.current <= 0) return;
+    animateTo(indexRef.current - 1, -1);
+  }, [animateTo]);
+
+  /* Body lock while the hijack is engaged (everything but the last slide). */
+  useEffect(() => {
+    if (prefersReduced()) return undefined;
+    const locked = index < SLIDES.length - 1;
+    document.body.style.overflow = locked ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [index]);
+
+  /* Wheel / touch / keys. Cleaned up on unmount. */
+  useEffect(() => {
+    if (prefersReduced()) return undefined;
+
+    const atTop = () => window.scrollY <= 4;
+
+    const onWheel = (e) => {
+      if (!atTop()) return;
+
+      const atLast = indexRef.current >= SLIDES.length - 1;
+      const atFirst = indexRef.current <= 0;
+
+      /* Past the last slide (or back up from the first) the hero has nothing
+         left to say, so the page must scroll normally again. Swallowing the
+         event here would strand the visitor at the end of the hijack. */
+      if ((e.deltaY > 0 && atLast) || (e.deltaY < 0 && atFirst)) {
+        gateRef.current = 0;
+        return;
+      }
+
+      /* A trackpad flick arrives as a burst of small deltas. Sum them and only
+         commit once the gesture has clearly been made, so one flick is one
+         slide instead of three. */
+      gateRef.current += e.deltaY;
+      e.preventDefault();
+
+      if (Math.abs(gateRef.current) < WHEEL_GATE) return;
+
+      const dir = gateRef.current > 0 ? 1 : -1;
+      gateRef.current = 0;
+
+      if (dir > 0) goNext();
+      else goPrev();
+    };
+
+    let touchY = 0;
+    const onTouchStart = (e) => {
+      touchY = e.touches[0].clientY;
+    };
+    const onTouchMove = (e) => {
+      if (!atTop()) return;
+      const dy = touchY - e.touches[0].clientY;
+      /* 110px, not 32: on touch the same flick that skipped three slides on a
+         trackpad does it here, and a swipe that short is not a decision. */
+      if (Math.abs(dy) < 110) return;
+      if (dy > 0 && indexRef.current < SLIDES.length - 1) {
+        e.preventDefault();
+        touchY = e.touches[0].clientY;
+        goNext();
+      } else if (dy < 0 && indexRef.current > 0) {
+        e.preventDefault();
+        touchY = e.touches[0].clientY;
+        goPrev();
+      }
+    };
+
+    const onKey = (e) => {
+      if (!atTop()) return;
+      if (['ArrowDown', 'PageDown', ' '].includes(e.key) && indexRef.current < SLIDES.length - 1) {
+        e.preventDefault();
+        goNext();
+      } else if (['ArrowUp', 'PageUp'].includes(e.key) && indexRef.current > 0) {
+        e.preventDefault();
+        goPrev();
+      }
+    };
+
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [goNext, goPrev]);
+
+  /* Snap out of the hijack so a nav jump can scroll freely. */
+  const exitHero = useCallback((target) => {
+    const last = SLIDES.length - 1;
+    slideRefs.current.forEach((el, i) => {
+      if (!el) return;
+      el.style.transition = 'none';
+      el.style.clipPath = 'none';
+      el.style.visibility = i === last ? 'visible' : 'hidden';
+      el.style.zIndex = i === last ? 3 : 1;
+    });
+    indexRef.current = last;
+    setIndex(last);
+    document.body.style.overflow = '';
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(target);
+      if (el) el.scrollIntoView({ behavior: prefersReduced() ? 'auto' : 'smooth', block: 'start' });
+    });
+  }, []);
+
+  const activeInk = onVoltage(SLIDES[index].key);
+
   return (
-    <div className={`tl-plate-row tl-row--${plate.span}`}>
-      <article
-        className={`tl-plate tl-plate--${plate.span}`}
-        data-reveal
-        style={{ '--tl-delay': `${80 + i * 135}ms` }}
-      >
-        <div className="tl-plate__artbox">
-          <div className="tl-plate__art" data-tl-drift>
-            <span className={`tl-plate__artfill tl-art--${plate.span}`} aria-hidden="true" />
+    <section className="tl-hero" aria-roledescription="carousel" aria-label="TrackSimply">
+      <Nav glass={glass} ink={activeInk} onBegin={onStepInside} onJump={exitHero} />
+
+      <div className="tl-slides">
+        {SLIDES.map((slide, i) => (
+          <div
+            key={slide.key}
+            ref={(el) => {
+              slideRefs.current[i] = el;
+            }}
+            className={`tl-slide tl-slide--${slide.key}${i === 0 ? ' is-active' : ''}`}
+            style={{ '--slide-c': VOLT[slide.key], '--slide-ink': onVoltage(slide.key) }}
+            aria-hidden={i !== index}
+          >
+            <div className="tl-slide__text">
+              <p className="tl-slide__index">
+                <span>{slide.kicker}</span>
+                <span className="tl-slide__index-sep">· {String(i + 1).padStart(2, '0')}/04</span>
+              </p>
+              <h1 className="tl-slide__brand tl-display">TrackSimply</h1>
+              <p className="tl-slide__tag">{slide.tag}</p>
+              <button type="button" className="tl-btn" onClick={onStepInside}>
+                {slide.btn}
+              </button>
+            </div>
+
+            <div className="tl-slide__port">
+              <div className="tl-frame" aria-hidden="true">
+                <span className="tl-frame__tick tl-frame__tick--tl" />
+                <span className="tl-frame__tick tl-frame__tick--tr" />
+                <span className="tl-frame__tick tl-frame__tick--bl" />
+                <span className="tl-frame__tick tl-frame__tick--br" />
+              </div>
+              <div className="tl-port">
+                <img
+                  className="tl-port__img"
+                  src={slide.img}
+                  alt={`TrackSimply ${slide.view} in dark mode`}
+                  decoding="async"
+                  fetchpriority={i === 0 ? 'high' : 'low'}
+                />
+              </div>
+              <span className="tl-slide__caption">{slide.view} · Dark mode</span>
+            </div>
           </div>
-          {/* Numeral sits on the artbox (not the drifting art) so the ±6%
-              scroll drift never carries it out of the clipped frame. */}
-          <span className="tl-plate__numeral" aria-hidden="true">
-            {plate.numeral}
+        ))}
+      </div>
+
+      {/* progress dots */}
+      <div className="tl-dots" role="tablist" aria-label="Hero slides">
+        {SLIDES.map((slide, i) => (
+          <button
+            key={slide.key}
+            type="button"
+            role="tab"
+            aria-selected={i === index}
+            aria-label={`Go to ${slide.key} slide`}
+            className={`tl-dot${i === index ? ' is-active' : ''}`}
+            style={{ '--dot-c': VOLT[slide.key] }}
+            onClick={() => {
+              if (i !== indexRef.current) animateTo(i, i > indexRef.current ? 1 : -1);
+            }}
+          />
+        ))}
+      </div>
+
+      {/* vertical scroll cue */}
+      <div className="tl-cue" aria-hidden="true">
+        <span className="tl-cue__label">Scroll</span>
+        <span className="tl-cue__line" />
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Marquee
+ * ------------------------------------------------------------------ */
+
+const MARQUEE = ['Bookkeeping', 'Analytics', 'Debts', 'Budgets', 'Inventory', 'Fleet'];
+const MARQUEE_VOLTS = ['orange', 'pink', 'lime', 'blue'];
+
+function Marquee() {
+  const group = (
+    <div className="tl-marquee__group" aria-hidden="true">
+      {MARQUEE.map((word, i) => (
+        <React.Fragment key={word}>
+          <span className="tl-marquee__word">{word}</span>
+          <span className="tl-marquee__star" style={{ color: VOLT[MARQUEE_VOLTS[i % 4]] }}>
+            ✦
           </span>
-        </div>
-        <div className="tl-plate__meta">
-          <span className="tl-label tl-plate__meta-line">{plate.meta}</span>
-          <h3 className="tl-plate__title">{plate.title}</h3>
-          <p className="tl-plate__desc tl-body">{plate.desc}</p>
-          <button type="button" className="tl-plate__view" onClick={onStepInside}>
-            View <span className="tl-plate__view-arrow">→</span>
-          </button>
-        </div>
-      </article>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+  return (
+    <div className="tl-marquee" role="presentation">
+      <div className="tl-marquee__track">
+        {group}
+        {group}
+      </div>
     </div>
   );
 }
 
-function PlatesSection({ onStepInside }) {
+/* ------------------------------------------------------------------ *
+ * "The Instruments" — five voltage strips
+ * ------------------------------------------------------------------ */
+
+const STRIPS = [
+  { n: '01', roman: 'I', title: 'Bookkeeping', tag: 'Ledger', volt: 'orange', img: '/screenshots/bookkeeping.png', specs: ['Every row read', 'Sources & fleet on one line'], label: 'In the suite' },
+  { n: '02', roman: 'II', title: 'Analytics', tag: 'Insight', volt: 'pink', img: '/screenshots/analytics.png', specs: ['Charts that explain', 'Print-ready reports'], label: 'In the suite' },
+  { n: '03', roman: 'III', title: 'Budget Planner', tag: 'Targets', volt: 'lime', img: '/screenshots/budget.png', specs: ['Spend vs target', 'While it happens'], label: 'In the suite' },
+  { n: '04', roman: 'IV', title: 'Debt Tracker', tag: 'Liabilities', volt: 'blue', img: '/screenshots/debt.png', specs: ['What is owed', 'When it clears'], label: 'In the suite' },
+  { n: '05', roman: 'V', title: 'Inventory & Fleet', tag: 'Stock', volt: 'orange', img: '/screenshots/inventory.png', specs: ['Stock and vehicles', 'In the same breath'], label: 'In the suite' },
+];
+
+function Instruments({ onStepInside }) {
   return (
-    <section id="tl-platform" className="tl-plates">
-      <div className="tl-section">
-        <div className="tl-section__head" data-reveal>
-          <Eyebrow>Selected Works · The Instruments</Eyebrow>
-        </div>
-        <div className="tl-plates__stack">
-          {PLATES.map((plate, i) => (
-            <Plate key={plate.numeral} plate={plate} i={i} onStepInside={onStepInside} />
-          ))}
-        </div>
+    <section id="tl-platform" className="tl-instruments">
+      <div className="tl-section-head" data-reveal>
+        <p className="tl-kicker">Selected works · The suite</p>
+        <h2 className="tl-display-section">The Instruments</h2>
+      </div>
+
+      <div className="tl-strips">
+        {STRIPS.map((s) => (
+          <article
+            key={s.title}
+            className={`tl-strip tl-strip--${s.volt}`}
+            style={{ '--strip-c': VOLT[s.volt], '--strip-ink': onVoltage(s.volt) }}
+            data-reveal
+          >
+            <div className="tl-strip__rail">
+              <span className="tl-strip__num">{s.n}</span>
+              <span className="tl-strip__roman">{s.roman}</span>
+            </div>
+
+            <div className="tl-strip__media">
+              <img
+                className="tl-strip__img"
+                src={s.img}
+                alt={`${s.title} — screenshot of the ${s.title} view in dark mode`}
+                loading="lazy"
+                decoding="async"
+              />
+              <span className="tl-strip__ghost tl-display" aria-hidden="true">
+                {s.roman}
+              </span>
+            </div>
+
+            <div className="tl-strip__info">
+              <span className="tl-chip">{s.tag}</span>
+              <h3 className="tl-strip__title">{s.title}</h3>
+              <ul className="tl-strip__specs">
+                {s.specs.map((spec) => (
+                  <li key={spec}>{spec}</li>
+                ))}
+              </ul>
+              <div className="tl-strip__foot">
+                <span className="tl-strip__label tl-display">{s.label}</span>
+                <button type="button" className="tl-strip__shop" onClick={onStepInside}>
+                  Shop <span className="tl-strip__shop-arrow">→</span>
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Method / studio
+ * Method — pinned horizontal scrub across three voltage stages
  * ------------------------------------------------------------------ */
 
-const METHOD_NOTES = ['180+ assertions', 'Snapshot before · after', 'Read-only live mode', 'AI keys server-side'];
+function Wavelength() {
+  return (
+    <div className="tl-wave" aria-hidden="true">
+      {Array.from({ length: 26 }).map((_, i) => (
+        <span key={i} className="tl-wave__bar" style={{ '--i': i }} />
+      ))}
+    </div>
+  );
+}
+
+function Gauge() {
+  return (
+    <div className="tl-gauge" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="tl-gauge__svg">
+        <circle className="tl-gauge__track" cx="50" cy="50" r="42" />
+        <circle className="tl-gauge__arc" cx="50" cy="50" r="42" />
+      </svg>
+      <span className="tl-gauge__value tl-display">100%</span>
+      <span className="tl-gauge__cap">rows checked</span>
+    </div>
+  );
+}
+
+const STAGES = [
+  {
+    roman: 'I',
+    volt: 'orange',
+    kicker: 'Counting',
+    title: 'Every row, counted.',
+    body: 'Most desks read the first thousand rows and total the rest by hope. TrackSimply walks the whole ledger — all of it — before a single number is printed.',
+    anim: 'wave',
+  },
+  {
+    roman: 'II',
+    volt: 'pink',
+    kicker: 'Verifying',
+    title: 'Snapshot before · after.',
+    body: 'A snapshot of the books is taken and verified either side of every change. If a figure moves without a reason, the change is thrown away.',
+    anim: 'gauge',
+  },
+  {
+    roman: 'III',
+    volt: 'lime',
+    kicker: 'Serving',
+    title: 'Live, read-only.',
+    body: 'Browse real accounts knowing nothing is touched, and know the assistant is proxied server-side.',
+    anim: 'list',
+  },
+];
 
 function Method() {
   return (
-    <section id="tl-method" className="tl-method">
-      <div className="tl-section tl-method__grid">
-        <div className="tl-method__side" data-reveal>
-          <span className="tl-label tl-method__corner">Studio Note · 001</span>
-        </div>
-        <div className="tl-method__main">
-          <h2 className="tl-method__title tl-display-italic" data-reveal>
-            Testable by construction.
-          </h2>
-          <p className="tl-method__body tl-body" data-reveal style={{ '--tl-delay': '120ms' }}>
-            No test framework ceremony. The desk is held up by 180+ assertions that run before
-            anything ships, and a snapshot of the books is verified before and after every change —
-            if any number moves without a reason, the change is thrown away.
-          </p>
-          <p className="tl-method__body tl-body" data-reveal style={{ '--tl-delay': '240ms' }}>
-            Live mode opens read-only, so you can browse real accounts in the confidence that nothing
-            is touched. And the assistant is proxied server-side: its key never rides to your
-            browser.
-          </p>
-        </div>
-        <div className="tl-method__notes" data-reveal style={{ '--tl-delay': '180ms' }}>
-          {METHOD_NOTES.map((note, i) => (
-            <span key={note} className="tl-method__note">
-              <span className="tl-method__note-index">{`${'I'.repeat(i + 1)}.`}</span>
-              {note}
+    <section id="tl-method" className="tl-craft">
+      <div className="tl-craft__intro" aria-hidden="true">
+        <span className="tl-craft__intro-label">Method</span>
+      </div>
+      <div className="tl-craft__track">
+        {STAGES.map((stage, i) => (
+          <article
+            key={stage.roman}
+            className={`tl-craft__stage tl-craft__stage--${stage.volt}`}
+            style={{ '--stage-c': VOLT[stage.volt], '--stage-ink': onVoltage(stage.volt) }}
+            data-stage={i}
+          >
+            <span className="tl-craft__roman tl-display" aria-hidden="true">
+              {stage.roman}.
             </span>
-          ))}
-        </div>
+            <p className="tl-craft__kicker">{stage.kicker}</p>
+            <h3 className="tl-craft__title tl-display-section">{stage.title}</h3>
+            <p className="tl-craft__body">{stage.body}</p>
+
+            <div className="tl-craft__viz">
+              {stage.anim === 'wave' && <Wavelength />}
+              {stage.anim === 'gauge' && <Gauge />}
+              {stage.anim === 'list' && (
+                <ul className="tl-craft__list">
+                  <li>
+                    <span className="tl-craft__list-roman">III.</span>
+                    Read-only live mode
+                  </li>
+                  <li>
+                    <span className="tl-craft__list-roman">IV.</span>
+                    AI keys server-side
+                  </li>
+                </ul>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="tl-craft__rail" aria-hidden="true">
+        {STAGES.map((s) => (
+          <span key={s.roman} className="tl-craft__rail-tick" style={{ '--stage-c': VOLT[s.volt] }} />
+        ))}
       </div>
     </section>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Numbers — count up on scroll into view
+ * CTA — scattered words, sticker, coupon, social chips
  * ------------------------------------------------------------------ */
 
-const NUMBERS = [
-  { index: 'I.', value: 6, label: 'Tools, one place' },
-  { index: 'II.', value: 100, suffix: '%', label: 'Every row read, not the first thousand' },
-  { index: 'III.', value: 45, label: 'Account rules asserted' },
-  { index: '∞', value: null, label: 'In progress', open: true },
+const SCATTER = [
+  { text: 'One ledger', x: '6%', y: '16%', r: -3, speed: 7, volt: 'blue', face: 'display' },
+  { text: 'held still', x: '68%', y: '10%', r: 2, speed: 9, volt: 'pink', face: 'display' },
+  { text: 'no spreadsheet', x: '12%', y: '74%', r: 3, speed: 6, volt: 'orange', face: 'sans' },
+  { text: 'no month-end', x: '72%', y: '70%', r: -2, speed: 8, volt: 'lime', face: 'sans' },
+  { text: 'every row', x: '40%', y: '88%', r: -1, speed: 5, volt: 'blue', face: 'display' },
 ];
 
-function NumberItem({ item }) {
-  const ref = useRef(null);
-  const [display, setDisplay] = useState(0);
+const CHIPS = [
+  { label: '@tracksimply', volt: 'orange', r: -2.5 },
+  { label: 'The Ledger', volt: 'pink', r: 2 },
+  { label: 'Edition 001', volt: 'lime', r: -1.5 },
+  { label: 'Built by hand', volt: 'blue', r: 3 },
+];
 
-  useEffect(() => {
-    if (item.value == null) return undefined;
-    if (prefersReduced()) {
-      setDisplay(item.value);
-      return undefined;
-    }
-    let raf = 0;
-    let io;
-    const duration = 1600;
-    const ease = (t) => 1 - Math.pow(1 - t, 4);
-    const start = () => {
-      const t0 = performance.now();
-      const step = (now) => {
-        const t = Math.min(1, (now - t0) / duration);
-        setDisplay(Math.round(ease(t) * item.value));
-        if (t < 1) raf = window.requestAnimationFrame(step);
-      };
-      raf = window.requestAnimationFrame(step);
-    };
-    io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            io.disconnect();
-            start();
-          }
-        });
-      },
-      { threshold: 0.4 },
-    );
-    if (ref.current) io.observe(ref.current);
-    return () => {
-      if (io) io.disconnect();
-      if (raf) window.cancelAnimationFrame(raf);
-    };
-  }, [item.value]);
+function CTA({ onStepInside }) {
+  const [joined, setJoined] = useState(false);
 
   return (
-    <div ref={ref} className={`tl-num__item${item.open ? ' tl-num__item--open' : ''}`}>
-      <span className="tl-num__index tl-label">{item.index}</span>
-      <span className="tl-num__value tl-numeral">
-        {item.value == null ? '∞' : display}
-        {item.value != null && item.suffix ? item.suffix : ''}
-      </span>
-      <span className="tl-num__label tl-label">{item.label}</span>
-    </div>
-  );
-}
+    <section className="tl-cta">
+      {SCATTER.map((w) => (
+        <span
+          key={w.text}
+          className={`tl-cta-word tl-cta-word--${w.face}`}
+          data-speed={w.speed}
+          style={{ left: w.x, top: w.y, '--r': `${w.r}deg`, color: VOLT[w.volt] }}
+          aria-hidden="true"
+        >
+          {w.text}
+        </span>
+      ))}
 
-function Numbers() {
-  return (
-    <section className="tl-numbers">
-      <div className="tl-section">
-        <div className="tl-numbers__row">
-          {NUMBERS.map((item) => (
-            <NumberItem key={item.index} item={item} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+      <div className="tl-cta__inner">
+        <button
+          type="button"
+          className="tl-sticker"
+          style={{ clipPath: STICKER_CLIP }}
+          onClick={onStepInside}
+        >
+          <span className="tl-sticker__text tl-display">Grab A Pair →</span>
+        </button>
 
-/* ------------------------------------------------------------------ *
- * Closing + footer
- * ------------------------------------------------------------------ */
-
-const CLOSING_META = ['Edition 001 — MMXXVI', 'Hand-built', 'No frameworks on the surface', 'Every row, accounted'];
-
-function Closing({ onStepInside }) {
-  return (
-    <section id="tl-begin" className="tl-closing">
-      <div className="tl-section">
-        <div className="tl-closing__grid">
-          <div className="tl-closing__left" data-reveal>
-            <Eyebrow>Begin</Eyebrow>
-            <h2 className="tl-closing__title tl-display-italic">Open the books.</h2>
-            <p className="tl-closing__body tl-body">
-              The desk is ready. Your ledgers keep themselves the moment you sign in — and answer
-              back, quietly, when asked.
-            </p>
-            <button type="button" className="tl-cta" onClick={onStepInside}>
-              Open the books <span className="tl-cta__arrow">→</span>
-            </button>
+        <div className="tl-coupon" data-reveal>
+          <div className="tl-coupon__head">
+            <span className="tl-coupon__brand tl-display">TrackSimply</span>
+            <span className="tl-coupon__code">LEDGER · 001</span>
           </div>
-          <div className="tl-closing__meta" data-reveal style={{ '--tl-delay': '140ms' }}>
-            {CLOSING_META.map((line) => (
-              <span key={line} className="tl-closing__meta-line tl-label">
-                {line}
+
+          <div className="tl-coupon__tear" aria-hidden="true">
+            <span className="tl-coupon__scissors">✂</span>
+          </div>
+
+          <h2 className="tl-coupon__title tl-display-section">
+            Keep the <em>books</em> you already keep.
+          </h2>
+          <p className="tl-coupon__body">
+            Drop your email and we will open the door. No card, no ceremony — just the desk.
+          </p>
+
+          <form
+            className="tl-coupon__form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setJoined(true);
+            }}
+          >
+            <input
+              type="email"
+              className="tl-coupon__input"
+              placeholder="you@business.com"
+              aria-label="Email address"
+              required
+            />
+            <button type="submit" className="tl-coupon__join">
+              {joined ? "You're in" : 'Join'}
+            </button>
+          </form>
+
+          <div className="tl-chips">
+            {CHIPS.map((chip) => (
+              <span
+                key={chip.label}
+                className="tl-chip-social tl-display"
+                style={{ '--chip-c': VOLT[chip.volt], '--chip-r': `${chip.r}deg`, color: onVoltage(chip.volt) }}
+              >
+                {chip.label}
               </span>
             ))}
           </div>
         </div>
       </div>
-      <div className="tl-close__wordmark" aria-hidden="true">
-        TrackSimply
-      </div>
     </section>
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * Footer
+ * ------------------------------------------------------------------ */
+
+const FOOTER_COLS = [
+  { head: 'Platform', volt: 'orange', links: ['Bookkeeping', 'Analytics', 'Budget Planner'] },
+  { head: 'Instruments', volt: 'pink', links: ['Debt Tracker', 'Inventory', 'Fleet Registry'] },
+  { head: 'Method', volt: 'lime', links: ['All rows', 'Snapshots', 'Live read-only'] },
+  { head: 'Company', volt: 'blue', links: ['Colophon', 'Changelog', 'Contact'] },
+];
+
 function Footer() {
   return (
     <footer className="tl-footer">
-      <span className="tl-label">— : —</span>
-      <span className="tl-label">
-        <Clock className="tl-clock" /> · UTC
-      </span>
-      <span className="tl-label">Hand-built · One ledger, held still</span>
+      <div className="tl-colophon">
+        <span className="tl-colophon__item">
+          Real-time · <Clock className="tl-clock" /> UTC
+        </span>
+        <span className="tl-colophon__item">Hand-built · One ledger, held still</span>
+      </div>
+
+      <div className="tl-footer__cols">
+        {FOOTER_COLS.map((col) => (
+          <div key={col.head} className="tl-footer__col" data-c={col.volt}>
+            <h4 className="tl-footer__head">{col.head}</h4>
+            <ul>
+              {col.links.map((link) => (
+                <li key={link}>
+                  <a href="#tl-platform" className="tl-footer__link">
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <div className="tl-footer__wordmark-wrap" aria-hidden="true">
+        <span className="tl-footer__wordmark tl-display">TrackSimply</span>
+      </div>
     </footer>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Landing root — owns the shared motion loops
+ * Landing root — GSAP reveals, pin/scrub and parallax
  * ------------------------------------------------------------------ */
 
 export default function Landing({ onStepInside }) {
   const rootRef = useRef(null);
-  const [showLoader, setShowLoader] = useState(() => {
-    try {
-      return !window.sessionStorage.getItem(LOADER_KEY);
-    } catch {
-      return true; /* storage unavailable — play the loader anyway */
-    }
-  });
-  const [loaderDone, setLoaderDone] = useState(!showLoader);
-
-  /* Stable: the Loader holds it across a rAF loop. */
-  const handleLoaderDone = useCallback(() => {
-    try {
-      window.sessionStorage.setItem(LOADER_KEY, '1');
-    } catch {
-      /* ignore — the loader simply replays next session */
-    }
-    setLoaderDone(true);
-    setShowLoader(false);
-  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return undefined;
-    const reduced = prefersReduced();
 
-    /* --- Section reveals ------------------------------------------- */
-    const revealEls = root.querySelectorAll('[data-reveal]');
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-revealed');
-            io.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
-    );
-    revealEls.forEach((el) => io.observe(el));
-
-    let cleanups = [];
-
-    if (reduced) {
-      /* Everything is shown straight away; no loops are spun. */
-      revealEls.forEach((el) => el.classList.add('is-revealed'));
-      root.querySelectorAll('.tl-word--m').forEach((w) => w.classList.add('is-lit'));
-    } else {
-      /* --- Pointer parallax (hero layers, rAF-lerped) ---------------- */
-      const parallaxEls = root.querySelectorAll('[data-tl-parallax]');
-      let tx = 0;
-      let ty = 0;
-      let px = 0;
-      let py = 0;
-      let pointerRaf = 0;
-      const onPointerMove = (e) => {
-        tx = (e.clientX / window.innerWidth - 0.5) * 2;
-        ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    /* Reduced motion: reveal everything, spin up no loops. */
+    if (prefersReduced()) {
+      root.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-in'));
+      root.querySelectorAll('.tl-craft__stage').forEach((el) => el.classList.add('is-in'));
+      return () => {
+        window.scrollTo(0, 0);
       };
-      const pointerLoop = () => {
-        px += (tx - px) * 0.065;
-        py += (ty - py) * 0.065;
-        parallaxEls.forEach((el) => {
-          const depth = Number(el.dataset.tlDepth) || 8;
-          el.style.transform = `translate3d(${(-px * depth).toFixed(2)}px, ${(-py * depth).toFixed(2)}px, 0)`;
-        });
-        pointerRaf = window.requestAnimationFrame(pointerLoop);
-      };
-      window.addEventListener('pointermove', onPointerMove, { passive: true });
-      pointerRaf = window.requestAnimationFrame(pointerLoop);
-      cleanups.push(() => {
-        window.removeEventListener('pointermove', onPointerMove);
-        window.cancelAnimationFrame(pointerRaf);
-      });
-
-      /* --- Scroll loops: art drift + manifesto words ----------------- */
-      const driftEls = root.querySelectorAll('[data-tl-drift]');
-      const manifesto = root.querySelector('.tl-manifesto');
-      const manifestoWords = root.querySelectorAll('.tl-word--m');
-      let scrollRaf = 0;
-      let ticking = false;
-
-      const onScrollFrame = () => {
-        ticking = false;
-        const vh = window.innerHeight;
-
-        /* Art drifts ±6% of its own travel across the viewport. */
-        driftEls.forEach((box) => {
-          const rect = box.getBoundingClientRect();
-          const center = rect.top + rect.height / 2 - vh / 2;
-          const range = vh / 2 + rect.height / 2;
-          const p = Math.max(-1, Math.min(1, center / range));
-          box.style.setProperty('--tl-drift', `${(-p * 6).toFixed(2)}%`);
-        });
-
-        /* Manifesto: per-word opacity across the sticky runway. */
-        if (manifesto) {
-          const total = manifesto.offsetHeight - vh;
-          const scrolled = Math.max(0, Math.min(-manifesto.getBoundingClientRect().top, total));
-          const progress = total > 0 ? scrolled / total : 1;
-          const lit = Math.round(progress * (manifestoWords.length + 3));
-          manifestoWords.forEach((word, i) => {
-            word.classList.toggle('is-lit', i < lit);
-          });
-        }
-      };
-      const onScroll = () => {
-        if (ticking) return;
-        ticking = true;
-        scrollRaf = window.requestAnimationFrame(onScrollFrame);
-      };
-      window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll, { passive: true });
-      onScroll();
-      cleanups.push(() => {
-        window.removeEventListener('scroll', onScroll);
-        window.removeEventListener('resize', onScroll);
-        window.cancelAnimationFrame(scrollRaf);
-      });
     }
 
-    /* Landing unmounted → drop the reader at the top of the next screen. */
-    return () => {
-      io.disconnect();
-      cleanups.forEach((fn) => fn());
-      cleanups = [];
-    };
-  }, []);
+    let killed = false;
+    let pollId = 0;
+    let ctx = null;
+    let refreshHandler = null;
+    let fallbackId = 0;
 
-  /* Return the reader to the top of the next screen when the landing goes. */
-  useEffect(() => {
+    /* If GSAP never arrives, expose the content rather than hiding it. */
+    const staticFallback = () => {
+      root.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-in'));
+      const craft = root.querySelector('.tl-craft');
+      if (craft) craft.classList.add('is-static');
+      root.querySelectorAll('.tl-craft__stage').forEach((el) => el.classList.add('is-in'));
+    };
+
+    const build = () => {
+      const gsap = window.gsap;
+      const ScrollTrigger = window.ScrollTrigger;
+      if (!gsap || !ScrollTrigger) return false;
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      ctx = gsap.context(() => {
+        /* --- ScrollTrigger reveals --- */
+        gsap.utils.toArray('[data-reveal]', root).forEach((el) => {
+          gsap.fromTo(
+            el,
+            { autoAlpha: 0, y: 42 },
+            {
+              autoAlpha: 1,
+              y: 0,
+              duration: 1,
+              ease: 'power3.out',
+              scrollTrigger: { trigger: el, start: 'top 86%' },
+              /* Hand the transform back to the stylesheet so the strips'
+                 :hover indent and the coupon's rotation are not overridden
+                 by GSAP's inline transform. */
+              onComplete: () => gsap.set(el, { clearProps: 'transform' }),
+            },
+          );
+        });
+
+        /* --- Method: pinned horizontal scrub --- */
+        const craft = root.querySelector('.tl-craft');
+        const track = root.querySelector('.tl-craft__track');
+        const stages = gsap.utils.toArray('.tl-craft__stage', root);
+        if (craft && track && stages.length > 1) {
+          const tween = gsap.to(track, {
+            xPercent: (-100 * (stages.length - 1)) / stages.length,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: craft,
+              start: 'top top',
+              end: '+=300%',
+              pin: true,
+              scrub: 0.6,
+              anticipatePin: 1,
+              invalidateOnRefresh: true,
+            },
+          });
+          stages.forEach((stage) => {
+            ScrollTrigger.create({
+              trigger: stage,
+              containerAnimation: tween,
+              start: 'left center',
+              onEnter: () => stage.classList.add('is-in'),
+              onEnterBack: () => stage.classList.add('is-in'),
+            });
+          });
+        }
+
+        /* --- Footer wordmark parallax --- */
+        const footer = root.querySelector('.tl-footer');
+        const wordmark = root.querySelector('.tl-footer__wordmark');
+        if (footer && wordmark) {
+          gsap.fromTo(
+            wordmark,
+            { xPercent: 0 },
+            {
+              xPercent: -3,
+              ease: 'none',
+              scrollTrigger: { trigger: footer, start: 'top bottom', end: 'bottom top', scrub: true },
+            },
+          );
+        }
+
+        /* --- Scattered CTA words parallax --- */
+        const cta = root.querySelector('.tl-cta');
+        if (cta) {
+          gsap.utils.toArray('.tl-cta-word', root).forEach((word) => {
+            const speed = parseFloat(word.dataset.speed || '6');
+            gsap.fromTo(
+              word,
+              { yPercent: speed },
+              {
+                yPercent: -speed,
+                ease: 'none',
+                scrollTrigger: { trigger: cta, start: 'top bottom', end: 'bottom top', scrub: true },
+              },
+            );
+          });
+        }
+      }, root);
+
+      /* Refresh once fonts and images have settled. */
+      refreshHandler = () => ScrollTrigger.refresh();
+      window.addEventListener('load', refreshHandler);
+      setTimeout(() => ScrollTrigger.refresh(), 400);
+      return true;
+    };
+
+    if (!build()) {
+      pollId = window.setInterval(() => {
+        if (killed) {
+          window.clearInterval(pollId);
+          return;
+        }
+        if (build()) window.clearInterval(pollId);
+      }, 120);
+      fallbackId = window.setTimeout(() => {
+        if (!ctx) {
+          if (pollId) window.clearInterval(pollId);
+          staticFallback();
+        }
+      }, 3000);
+    }
+
     return () => {
+      killed = true;
+      if (pollId) window.clearInterval(pollId);
+      if (fallbackId) window.clearTimeout(fallbackId);
+      if (refreshHandler) window.removeEventListener('load', refreshHandler);
+      if (ctx) ctx.revert();
       window.scrollTo(0, 0);
     };
   }, []);
 
   return (
-    <div ref={rootRef} className={`tl-root${loaderDone ? ' is-ready' : ''}`}>
-      <FilmGrain />
-      {showLoader && <Loader onDone={handleLoaderDone} />}
+    <div ref={rootRef} className="tl-root">
+      <Overlays />
       <main className="tl-page">
         <Hero onStepInside={onStepInside} />
-        <div className="tl-rule tl-rule--flush" aria-hidden="true" />
-        <Manifesto />
-        <div className="tl-rule" aria-hidden="true" />
-        <PlatesSection onStepInside={onStepInside} />
-        <div className="tl-rule" aria-hidden="true" />
+        <Marquee />
+        <Instruments onStepInside={onStepInside} />
         <Method />
-        <div className="tl-rule" aria-hidden="true" />
-        <Numbers />
-        <div className="tl-rule" aria-hidden="true" />
-        <Closing onStepInside={onStepInside} />
+        <CTA onStepInside={onStepInside} />
         <Footer />
       </main>
     </div>
