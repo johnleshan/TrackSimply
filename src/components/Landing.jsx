@@ -864,13 +864,33 @@ export default function Landing({ onStepInside }) {
         const track = root.querySelector('.tl-craft__track');
         const stages = gsap.utils.toArray('.tl-craft__stage', root);
         if (craft && track && stages.length > 1) {
+          /*
+           * Travel must be derived from the track's CONTENT width, not its
+           * element box.
+           *
+           * The track is a block-level flex container: its border-box is one
+           * viewport wide (1440px) while its children overflow to three
+           * viewports (4320px). xPercent resolves against the border-box, so
+           * the old -66.67% travelled 960px when the stages needed 2880px. The
+           * scrub ran a third of its distance: stage two slid halfway into
+           * view, stage three never appeared at all, and the section looked
+           * broken from end to end.
+           *
+           * Measured in pixels from the real stage width, and re-measured on
+           * every ScrollTrigger.refresh so a resize or font load cannot leave
+           * it short again.
+           */
+          const travel = () => stages[0].getBoundingClientRect().width * (stages.length - 1);
+
           const tween = gsap.to(track, {
-            xPercent: (-100 * (stages.length - 1)) / stages.length,
+            x: () => -travel(),
             ease: 'none',
             scrollTrigger: {
               trigger: craft,
               start: 'top top',
-              end: '+=300%',
+              /* ~1.15 screens of scroll per transition: enough to read a
+                 stage, short enough that the section does not feel stuck. */
+              end: () => `+=${Math.round(window.innerHeight * (stages.length - 1) * 1.15)}`,
               pin: true,
               scrub: 0.6,
               anticipatePin: 1,
