@@ -473,17 +473,35 @@ body:has(.tl-root) {
      background a lime dot vanished. The dark ring keeps every control legible
      on all four fills. */
   box-shadow: 0 0 0 2px var(--tl-black);
-  transition: transform 260ms var(--tl-ease), opacity 260ms var(--tl-ease);
+  /* 260ms read as lag next to a 950ms wipe: the dots were still easing while
+     the slide had already landed. Tightened so the control answers at once. */
+  transition: transform 160ms var(--tl-ease), opacity 160ms var(--tl-ease),
+    box-shadow 160ms var(--tl-ease);
 }
 
 .tl-root .tl-dot.is-active {
   opacity: 1;
   transform: scale(1.45);
+  /* The active dot wears the current slide's colour at full strength with a
+     solid ring, so "which slide am I on" is legible at a glance rather than
+     being inferred from which dot happens to be biggest. */
+  box-shadow: 0 0 0 3px var(--tl-black), 0 0 0 5px currentColor;
 }
 
 .tl-root .tl-dot:hover {
   opacity: 0.85;
-  transform: scale(1.15);
+}
+
+/* Hover must never shrink the active dot. Both rules set `transform`, and
+   :hover came later in the cascade, so hovering the live dot collapsed it back
+   to 1.15x — the selection appeared to flicker whenever the pointer passed
+   across it. Hover now only lifts an inactive dot. */
+.tl-root .tl-dot:not(.is-active):hover {
+  transform: scale(1.2);
+}
+
+.tl-root .tl-dot.is-active:hover {
+  transform: scale(1.45);
 }
 
 /* vertical scroll cue */

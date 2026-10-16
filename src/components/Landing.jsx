@@ -251,6 +251,12 @@ function Hero({ onStepInside }) {
   }, []);
 
   const animateTo = useCallback((next, dir) => {
+    /* Guard here, not only in the wheel handlers. The dots call animateTo
+       directly, so without this a visitor clicking three dots in a row started
+       three competing wipes on the same two elements and the clips ended up
+       half-open — the "buggy" the dots were blamed for. */
+    if (lockedRef.current || next === indexRef.current) return;
+
     const from = slideRefs.current[indexRef.current];
     const to = slideRefs.current[next];
     if (!from || !to) return;
@@ -288,8 +294,17 @@ function Hero({ onStepInside }) {
       })
       .to(to, { clipPath: 'inset(0 0 0 0)' }, 0);
 
+    /*
+     * indexRef moves now so a second request cannot queue behind this one;
+     * the state that PAINTS the dots moves when the wipe lands.
+     *
+     * Setting both at the start made the active dot jump to the next slide a
+     * full second before that slide was on screen, which read as the control
+     * lagging. The dots now only ever describe what the visitor can see.
+     */
     indexRef.current = next;
-    setIndex(next);
+
+    gsap.delayedCall(SLIDE_MS, () => setIndex(next));
   }, []);
 
   const goNext = useCallback(() => {
