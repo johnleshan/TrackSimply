@@ -117,19 +117,40 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('tracksimply_theme') || 'light');
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [unseenWhatsNew, setUnseenWhatsNew] = useState(() => getUnseenVersions());
-  // Public gate: marketing landing first; "Step inside" swaps in the sign-in.
+  // Public gate: the marketing landing is the front door for everyone, including
+  // a visitor who still holds a remembered session. "Step inside" decides what
+  // happens next: a remembered session goes straight into the app, everyone else
+  // gets the sign-in screen.
   const [showLogin, setShowLogin] = useState(false);
+  const [entered, setEntered] = useState(false);
 
-  // Open once by itself when the visitor signs in and there is an unread
-  // release. Cannot blaze past unnoticed, but also never interrupts your work.
+  // Signing in from the landing counts as having stepped inside, otherwise a
+  // user who had no remembered session would be left staring at the sign-in
+  // screen after a successful login.
+  const steppedIn = entered || (Boolean(user) && showLogin);
+
+  const handleStepInside = () => {
+    if (user) setEntered(true);
+    else setShowLogin(true);
+  };
+
+  // Signing out returns the visitor to the front door.
+  useEffect(() => {
+    if (!user) setEntered(false);
+  }, [user]);
+
+  // Open once by itself when the visitor is INSIDE the app and there is an
+  // unread release. Gated on steppedIn as well as user: a returning user's
+  // session restores while they are still on the landing page, and without this
+  // the release panel would pop over the marketing page before they went in.
   useEffect(() => {
     const unseen = getUnseenVersions();
     setUnseenWhatsNew(unseen);
-    if (user && unseen.length > 0) {
+    if (user && steppedIn && unseen.length > 0) {
       const t = setTimeout(() => setIsWhatsNewOpen(true), 600);
       return () => clearTimeout(t);
     }
-  }, [user]);
+  }, [user, steppedIn]);
 
   const closeWhatsNew = () => {
     setIsWhatsNewOpen(false);
@@ -182,11 +203,24 @@ function App() {
     return <LoadingScreen />;
   }
 
-  if (!user) {
+  // The landing page is the front door even for a visitor who is still signed
+  // in: a remembered session no longer skips straight past it.
+  if (!steppedIn) {
     return showLogin ? (
       <LoginScreen onBack={() => setShowLogin(false)} />
     ) : (
-      <Landing onStepInside={() => setShowLogin(true)} />
+      <Landing onStepInside={handleStepInside} />
+    );
+  }
+
+  if (!user) {
+    return (
+      <LoginScreen
+        onBack={() => {
+          setShowLogin(false);
+          setEntered(false);
+        }}
+      />
     );
   }
 

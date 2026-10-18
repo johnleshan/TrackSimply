@@ -7,6 +7,19 @@ fleet, and see your numbers in one clean view.
 An AI assistant can answer questions about your own records and act on them,
 with a preview before anything is saved.
 
+## Entry, and why a signed-in user still sees the landing page
+
+The marketing landing page is the front door for everyone. A remembered session
+does not skip past it — the visitor lands on the marketing page, and "Step
+inside" then either drops a remembered user straight into the app or shows the
+sign-in screen for everybody else. Signing out returns to the front door.
+
+The reason is not decoration. It is the only reliable way to reach people who
+were already signed in when a release ships: their session restores instantly
+and they would otherwise go straight to the tools and never learn what changed.
+The release panel is gated the same way — it opens once the visitor is actually
+inside the app, never on top of the landing page.
+
 ## Running it
 
 ```bash
