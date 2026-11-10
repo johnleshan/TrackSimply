@@ -4,14 +4,15 @@
   "version": "1.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:demo": "vite --mode demo",
-    "dev:live": "vite --mode live",
+    "dev": "vite --port 5173 --strictPort",
+    "dev:demo": "vite --mode demo --port 5173 --strictPort",
+    "dev:live": "vite --mode live --port 5173 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "verify:analytics": "node scripts/verify-analytics.js"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.30.0",
     "@supabase/supabase-js": "^2.103.3",
     "pg": "^8.20.0",
     "react": "^18.2.0",

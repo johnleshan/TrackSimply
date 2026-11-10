@@ -20,6 +20,46 @@ and they would otherwise go straight to the tools and never learn what changed.
 The release panel is gated the same way — it opens once the visitor is actually
 inside the app, never on top of the landing page.
 
+## Signing in, and the Auth0 alternative
+
+Username and password still work, unchanged. A second path sits beside it:
+**Continue with Auth0** on the sign-in screen, using Auth0's Universal Login.
+
+Auth0 proves *who* someone is. It never decides *what they may do*:
+
+| Step | Rule |
+|---|---|
+| Address trusted? | Only when Auth0 reports `email_verified = true` |
+| Which account? | Exactly one `site_users` row with that email |
+| Role source | That row — never a claim from Auth0 |
+| No match | Refused; no account is ever created |
+| Suspended / deactivated | Refused, same gate as the password path |
+
+A stranger can sign up in Auth0 (its login page is public) and still get
+nothing: no linked row means no entry. Linking is deliberate — an administrator
+fills in **Linked email** on an account in Account Management. The database
+enforces the "exactly one" part with a unique index on `lower(email)`.
+
+**Setup:**
+
+1. Apply `supabase/migrations/0003_user_email.sql`.
+2. In Account Management, set **Linked email** on the accounts that should use
+   Auth0. Leave it blank to keep an account password-only.
+3. In the Auth0 application, list every origin the app runs on under Allowed
+   Callback URLs, Allowed Logout URLs and Allowed Web Origins — including
+   `http://localhost:5173` for local work. A missing entry appears as
+   "Callback URL mismatch" after login.
+4. Leave the address unverified in Auth0 and sign-in is refused on purpose. That
+   is what stops someone claiming `admin@yourcompany.com` by simply typing it.
+
+`VITE_AUTH0_DOMAIN` and `VITE_AUTH0_CLIENT_ID` are public and may be committed;
+the client secret of an SPA does not exist. The SDK itself is loaded on demand,
+so visitors who never touch Auth0 do not download it.
+
+One limit worth stating plainly: this protects the *sign-in*, not the database.
+While Row Level Security is disabled and the publishable key ships in the bundle,
+anyone can write to `site_users` directly. See `supabase/migrations/README.md`.
+
 ## Running it
 
 ```bash

@@ -254,6 +254,65 @@ body:has(.k-page) {
   color: var(--k-text-3);
 }
 
+/* --- Auth0 alternative path ------------------------------------------------ */
+
+.k-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 16px;
+  color: var(--k-text-3);
+  font-family: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.k-divider::before,
+.k-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--k-panel-border);
+}
+
+.k-auth0 {
+  width: 100%;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--k-control-border);
+  background: var(--k-control);
+  color: var(--k-text);
+  font-family: var(--k-sans);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.k-auth0:hover:not(:disabled) {
+  background: var(--k-control-hover);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.k-auth0:focus-visible {
+  outline: 2px solid var(--k-teal);
+  outline-offset: 2px;
+}
+
+.k-auth0:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.k-auth0-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--k-text-3);
+}
+
 /* --------------------------------------------------------------------------
    Showcase column
    -------------------------------------------------------------------------- */
@@ -556,7 +615,7 @@ body:has(.k-page) {
   }
 }
 
-/* Optional "back to landing" escape hatch — only rendered when App passes an
+/* Optional "back to landing" escape hatch ï¿½ only rendered when App passes an
    onBack callback, so the standalone sign-in is unchanged. */
 .k-back {
   margin-top: 20px;

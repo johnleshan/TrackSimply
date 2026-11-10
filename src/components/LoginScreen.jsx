@@ -87,13 +87,14 @@ const SlideDots = ({ index, onSelect }) => {
  * ------------------------------------------------------------------ */
 
 export default function LoginScreen({ onBack }) {
-  const { login } = useAuth();
+  const { login, loginWithAuth0, auth0Error } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [auth0Busy, setAuth0Busy] = useState(false);
 
   const usernameRef = useRef(null);
 
@@ -144,6 +145,15 @@ export default function LoginScreen({ onBack }) {
   }, [isSubmitting, login, username, password]);
 
   const ready = username.trim().length > 0 && password.length > 0;
+
+  /* The redirect leaves the page, so this only resolves without navigating when
+     Auth0 could not be reached — the reason is then shown by the provider. */
+  const handleAuth0 = async () => {
+    if (auth0Busy || isSubmitting) return;
+    setAuth0Busy(true);
+    await loginWithAuth0();
+    setAuth0Busy(false);
+  };
 
   return (
     <div className="k-page">
@@ -208,6 +218,7 @@ export default function LoginScreen({ onBack }) {
             {/* aria-live so a failed attempt is announced, not just shown. */}
             <div className="k-error-slot" role="alert" aria-live="polite">
               {error && <p className="k-error">{error}</p>}
+              {!error && auth0Error && <p className="k-error">{auth0Error}</p>}
             </div>
 
             <button
@@ -218,6 +229,25 @@ export default function LoginScreen({ onBack }) {
               {isSubmitting ? 'Verifying account…' : 'Sign in'}
             </button>
           </form>
+
+          <div className="k-divider" role="separator" aria-label="or">
+            <span>or</span>
+          </div>
+
+          {/* Auth0 proves identity only. The role still comes from the account
+              an administrator linked to the verified email, so this button can
+              never grant more than that account already has. */}
+          <button
+            type="button"
+            className="k-auth0"
+            onClick={handleAuth0}
+            disabled={auth0Busy || isSubmitting}
+          >
+            {auth0Busy ? 'Opening Auth0…' : 'Continue with Auth0'}
+          </button>
+          <p className="k-auth0-note">
+            Use the verified email an administrator linked to your account.
+          </p>
 
           <p className="k-note">
             Accounts are created by an administrator. If you need access, ask the person who

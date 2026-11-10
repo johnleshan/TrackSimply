@@ -44,6 +44,13 @@ change is never a guess.
 - There is **no Row Level Security** on any table. Tenant isolation is enforced
   only by `user_id` filters that run in browser JavaScript. This is a security
   finding, not a data-loss risk, and is tracked separately.
+
+  This matters directly for Auth0. `0003_user_email.sql` decides which account an
+  Auth0 identity inherits, but while RLS is off and the publishable key is in the
+  browser bundle, anyone who reads that key can also *write* to `site_users` and
+  point an email at the superadmin row. The application-level checks in this
+  repository are correct and worth having, but they are not a substitute for
+  RLS. Privilege cannot be fully protected until policies exist.
 - The `vehicles` table is used by the application but is **absent** from the
   original `scratch/initialize_database.sql`, which proves production has
   received manual changes. Treat the original file as unreliable.

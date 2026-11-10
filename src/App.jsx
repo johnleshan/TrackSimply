@@ -110,7 +110,7 @@ const AppHeader = ({ title, theme, toggleTheme, logout, isCollapsed, user, onOpe
 );
 
 function App() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, auth0Error, auth0JustSignedIn } = useAuth();
   const [activeTool, setActiveTool] = useState('overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -126,8 +126,9 @@ function App() {
 
   // Signing in from the landing counts as having stepped inside, otherwise a
   // user who had no remembered session would be left staring at the sign-in
-  // screen after a successful login.
-  const steppedIn = entered || (Boolean(user) && showLogin);
+  // screen after a successful login. An Auth0 sign-in returns to a fresh page,
+  // so it is treated the same way.
+  const steppedIn = entered || (Boolean(user) && (showLogin || auth0JustSignedIn));
 
   const handleStepInside = () => {
     if (user) setEntered(true);
@@ -138,6 +139,18 @@ function App() {
   useEffect(() => {
     if (!user) setEntered(false);
   }, [user]);
+
+  // A completed Auth0 sign-in should land inside the app, not back on the
+  // marketing page the redirect started from.
+  useEffect(() => {
+    if (auth0JustSignedIn) setEntered(true);
+  }, [auth0JustSignedIn]);
+
+  // A refused Auth0 sign-in has a reason the visitor needs to read, and the
+  // only place it is shown is the sign-in screen.
+  useEffect(() => {
+    if (auth0Error) setShowLogin(true);
+  }, [auth0Error]);
 
   // Open once by itself when the visitor is INSIDE the app and there is an
   // unread release. Gated on steppedIn as well as user: a returning user's

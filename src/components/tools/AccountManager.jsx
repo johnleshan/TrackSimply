@@ -131,9 +131,11 @@ const AccountManager = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user', email: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [hasEmailColumn, setHasEmailColumn] = useState(false);
 
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspendSaving, setSuspendSaving] = useState(false);
@@ -148,7 +150,14 @@ const AccountManager = () => {
       .select('*')
       .order('created_at', { ascending: true });
 
-    if (!error && data) setUsers(data);
+    if (!error && data) {
+      setUsers(data);
+      // Whether migration 0003 has run. Read from a real row rather than
+      // guessing, so ordinary account edits keep working before it is applied.
+      if (data.length > 0) {
+        setHasEmailColumn(Object.prototype.hasOwnProperty.call(data[0], 'email'));
+      }
+    }
     setLoading(false);
   };
 
@@ -171,25 +180,55 @@ const AccountManager = () => {
   const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUser.username || !newUser.password) return;
+    setFormError('');
+
+    // Stored lowercased so the Auth0 match is exact and case cannot split one
+    // person across two rows.
+    const email = String(newUser.email || '').trim().toLowerCase() || null;
+
+    /* Send the column only when it is useful. Before migration 0003 runs it does
+       not exist, and adding `email: null` to every request would break ordinary
+       account changes. When the column is known to exist, an empty value is sent
+       deliberately so an administrator can remove a link. */
+    const emailField = (email || hasEmailColumn) ? { email } : {};
+
+    const missingColumn = (error) =>
+      error && (error.code === '42703' || error.code === 'PGRST204');
 
     if (editingId) {
       const { error } = await supabase
         .from('site_users')
-        .update({ username: newUser.username, password: newUser.password, role: newUser.role })
+        .update({ username: newUser.username, password: newUser.password, role: newUser.role, ...emailField })
         .eq('id', editingId);
 
-      if (!error) {
-        setEditingId(null);
-        fetchUsers();
+      if (error) {
+        setFormError(missingColumn(error)
+          ? 'The email column does not exist yet. Apply supabase/migrations/0003_user_email.sql, then try again.'
+          : `Could not update the account: ${error.message || 'unknown error'}`);
+        return;
       }
+      setEditingId(null);
+      fetchUsers();
     } else {
       const { error } = await supabase
         .from('site_users')
-        .insert([{ ...newUser, active: true }]);
+        .insert([{
+          username: newUser.username,
+          password: newUser.password,
+          role: newUser.role,
+          ...emailField,
+          active: true,
+        }]);
 
-      if (!error) fetchUsers();
+      if (error) {
+        setFormError(missingColumn(error)
+          ? 'The email column does not exist yet. Apply supabase/migrations/0003_user_email.sql, then try again.'
+          : `Could not create the account: ${error.message || 'unknown error'}`);
+        return;
+      }
+      fetchUsers();
     }
-    setNewUser({ username: '', password: '', role: 'user' });
+    setNewUser({ username: '', password: '', role: 'user', email: '' });
     setShowPassword(false);
   };
 
@@ -212,7 +251,13 @@ const AccountManager = () => {
   };
 
   const handleEdit = (user) => {
-    setNewUser({ username: user.username, password: user.password, role: user.role });
+    setNewUser({
+      username: user.username,
+      password: user.password,
+      role: user.role,
+      email: user.email || '',
+    });
+    setFormError('');
     setEditingId(user.id);
   };
 
@@ -334,6 +379,7 @@ const AccountManager = () => {
 
       <div className="card">
         <h3>{editingId ? 'Edit User' : 'Create New User'}</h3>
+        {formError && <p className="modal-error" role="alert" style={{ marginTop: '10px' }}>{formError}</p>}
         <form onSubmit={handleAddUser} className="grid-form" style={{ gap: '15px', marginTop: '15px' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>Username</label>
@@ -377,6 +423,27 @@ const AccountManager = () => {
               {isSuperadmin && <option value="admin">Admin</option>}
             </select>
           </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+              Linked email <span style={{ opacity: 0.7 }}>(for Auth0 sign-in)</span>
+            </label>
+            <input
+              type="email"
+              placeholder="name@company.com"
+              value={newUser.email}
+              onChange={e => {
+                setNewUser({ ...newUser, email: e.target.value });
+                if (formError) setFormError('');
+              }}
+              style={{ width: '100%' }}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: '0.72rem', lineHeight: 1.45, color: 'var(--text-dim)' }}>
+              Optional. When set, this verified address can sign in with Auth0 and gets{' '}
+              <strong>this</strong> account&rsquo;s role — never more. Blank means Auth0 cannot reach it.
+            </p>
+          </div>
           <div style={{ alignSelf: 'end' }}>
             <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
               {editingId ? 'Update User' : 'Create Account'}
@@ -403,7 +470,14 @@ const AccountManager = () => {
                 const administrable = canAdminister(u);
                 return (
                   <tr key={u.id}>
-                    <td data-label="Username" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{u.username}</td>
+                    <td data-label="Username" style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                      {u.username}
+                      {u.email && (
+                        <span style={{ display: 'block', fontWeight: 400, fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '2px' }}>
+                          {u.email}
+                        </span>
+                      )}
+                    </td>
                     <td data-label="Role">
                       <span className={`badge ${u.role === 'superadmin' ? 'badge-purple' : u.role === 'admin' ? 'badge-info' : ''}`}>
                         {u.role.toUpperCase()}

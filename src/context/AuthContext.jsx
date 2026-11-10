@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { accountStatus, suspensionMessage } from '../lib/accountStatus';
+import {
+  getAuth0Client,
+  loginWithAuth0 as startAuth0Login,
+  logoutFromAuth0,
+} from '../lib/auth0';
 
 const AuthContext = createContext();
 
@@ -70,17 +75,81 @@ function persistSession(sessionUser) {
   }
 }
 
+/**
+ * Escapes a value for use inside a SQL LIKE pattern. Emails legitimately contain
+ * underscores, and an unescaped '_' would match any single character — so
+ * `a_b@x.com` could otherwise resolve to `axb@x.com` and hand over that role.
+ */
+function escapeLike(value) {
+  return String(value).replace(/[\\%_]/g, '\\$&');
+}
+
+/**
+ * Resolves a verified Auth0 email to exactly one TrackSimply account.
+ *
+ * Returns `{ account }` or `{ error }`. It never creates an account: if the
+ * address is not linked to a row, the sign-in is refused.
+ */
+async function findAccountByEmail(email) {
+  const { data, error } = await supabase
+    .from('site_users')
+    .select('*')
+    .ilike('email', escapeLike(email))
+    .limit(2);
+
+  if (error) {
+    // 42703 / PGRST204: the column is absent, so migration 0003 has not been
+    // applied. Say so plainly instead of reporting a generic connection fault.
+    const missingColumn = error.code === '42703' || error.code === 'PGRST204';
+    return {
+      error: missingColumn
+        ? 'Email sign-in is not set up yet: apply supabase/migrations/0003_user_email.sql.'
+        : `Could not read accounts: ${error.message || 'unknown error'}`,
+    };
+  }
+
+  const rows = data || [];
+  if (rows.length === 0) {
+    return {
+      error: `No TrackSimply account is linked to ${email}. Ask an administrator to add this email to your account.`,
+    };
+  }
+  if (rows.length > 1) {
+    return {
+      error: `More than one account uses ${email}. An administrator must resolve that before you can sign in.`,
+    };
+  }
+
+  return { account: rows[0] };
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readSession);
 
   const [loading, setLoading] = useState(true);
+  const [auth0Error, setAuth0Error] = useState('');
+  const [auth0JustSignedIn, setAuth0JustSignedIn] = useState(false);
   const logoutTimerRef = useRef(null);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const viaAuth0 = Boolean(user?.auth0);
+
     setUser(null);
     persistSession(null);
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-  }, []);
+
+    /* Auth0 keeps its own session cookie on its domain. Ending only the local
+       one would make the next "Continue with Auth0" sign the same person
+       straight back in, which looks like a broken sign-out. */
+    if (viaAuth0) {
+      try {
+        await logoutFromAuth0();
+      } catch {
+        // The local session is already gone; a failed redirect is not worth
+        // blocking the user behind.
+      }
+    }
+  }, [user]);
 
   const resetLogoutTimer = useCallback(() => {
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
@@ -92,10 +161,101 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
 
+  /* Handles the return trip from Auth0's Universal Login. Runs before the app
+     renders, so a callback is never half-applied.
+
+     The whole security rule lives here, in one place:
+       - trust the address only if Auth0 reports it verified
+       - it must match exactly one linked row
+       - the role comes from that row, never from Auth0
+     A stranger who signs up in Auth0 therefore gets nothing: no row, no entry. */
+  const hydrateFromAuth0 = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.has('error')) {
+      const description = params.get('error_description') || params.get('error');
+      setAuth0Error(String(description).replace(/\+/g, ' '));
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (!params.has('code') || !params.has('state')) return;
+
+    try {
+      const client = await getAuth0Client();
+      await client.handleRedirectCallback();
+      // Strip code/state from the address bar so a reload cannot replay them.
+      window.history.replaceState({}, '', window.location.pathname);
+
+      const profile = await client.getUser();
+      const verified = Boolean(profile)
+        && (profile.email_verified === true || profile.email_verified === 'true');
+
+      if (!verified) {
+        setAuth0Error('Your Auth0 email address is not verified yet. Verify it, then sign in again.');
+        return;
+      }
+
+      const email = String(profile.email || '').trim().toLowerCase();
+      if (!email) {
+        setAuth0Error('Auth0 did not return an email address for this account.');
+        return;
+      }
+
+      const match = await findAccountByEmail(email);
+      if (match.error) {
+        setAuth0Error(match.error);
+        return;
+      }
+
+      // The same gate the username/password path uses, so a suspension applies
+      // however someone signs in.
+      const status = accountStatus(match.account);
+      if (status.key === 'inactive') {
+        setAuth0Error('This account has been deactivated by an administrator.');
+        return;
+      }
+      if (status.key === 'suspended') {
+        setAuth0Error(suspensionMessage(status));
+        return;
+      }
+
+      // The password is deliberately not carried into the session, exactly as
+      // on the username/password path.
+      setUser({
+        id: match.account.id,
+        role: match.account.role,
+        username: match.account.username,
+        email,
+        auth0: true,
+      });
+      setAuth0JustSignedIn(true);
+    } catch (err) {
+      setAuth0Error(err && err.message ? err.message : 'Auth0 sign-in failed. Please try again.');
+    }
+  }, []);
+
+  const loginWithAuth0 = useCallback(async ({ signup = false } = {}) => {
+    setAuth0Error('');
+    try {
+      await startAuth0Login({ signup });
+    } catch (err) {
+      setAuth0Error(err && err.message
+        ? err.message
+        : 'Could not reach Auth0. Check your connection and try again.');
+    }
+  }, []);
+
   // Migration and Initialization
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // 0. Finish an Auth0 redirect before anything else, so the app never
+        //    renders a signed-out screen for someone who has just signed in.
+        await hydrateFromAuth0();
+
         // 1. Check if we need to migrate or seed default users
         const { data: remoteUsers, error } = await supabase.from('site_users').select('id').limit(1);
         
@@ -192,7 +352,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        loginWithAuth0,
+        auth0Error,
+        auth0JustSignedIn,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

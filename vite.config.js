@@ -33,6 +33,10 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 5173,
+      // Auth0's callback URL is registered against a fixed origin. Refusing to
+      // drift to another port turns a silent callback mismatch into an obvious
+      // startup error.
+      strictPort: true,
     },
   }
 })
