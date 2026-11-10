@@ -30,9 +30,17 @@ const CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID || 'BRxAT0jrLX8ySZACCOEWp
    the origin must match an Allowed Web Origin, or the login fails on return.
    Deriving it from the current origin means a local session on
    http://localhost:5173 and the deployed site each send their own — which is
-   why localhost has to be registered in Auth0 as well. */
-export const auth0RedirectUri = () =>
-  (typeof window !== 'undefined' ? window.location.origin : '');
+   why localhost has to be registered in Auth0 as well.
+
+   The trailing slash is deliberate. Auth0 compares the full string, and the
+   deployed application in this tenant is registered as
+   https://track-simply.vercel.app/ — so the redirect has to carry the slash to
+   match it. VITE_AUTH0_REDIRECT_URI overrides this for an unusual setup. */
+export const auth0RedirectUri = () => {
+  const configured = import.meta.env.VITE_AUTH0_REDIRECT_URI;
+  if (configured) return configured;
+  return typeof window !== 'undefined' ? `${window.location.origin}/` : '';
+};
 
 let clientPromise = null;
 
