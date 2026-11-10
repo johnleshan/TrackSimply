@@ -22,8 +22,21 @@ inside the app, never on top of the landing page.
 
 ## Signing in, and the Auth0 alternative
 
-Username and password still work, unchanged. A second path sits beside it:
-**Continue with Auth0** on the sign-in screen, using Auth0's Universal Login.
+Username and password still work, unchanged. Two alternatives sit beside it on
+the sign-in screen:
+
+- **Continue with Google** — goes straight to Google's account chooser through
+  Auth0's `google-oauth2` connection, skipping the Auth0 page entirely.
+- **Continue with Auth0** — the Universal Login page, for email/password
+  connections and any other provider enabled on the application.
+
+Google is both sign-up and sign-in: Auth0 creates the identity the first time
+and reuses it after. There is deliberately no separate "sign up with Google"
+button — two buttons doing the same thing would only confuse.
+
+The Google connection must be enabled for this application in Auth0
+(Authentication → Social → Google → Applications). If it is not, the click ends
+on an Auth0 "connection not enabled" error rather than the Google page.
 
 Auth0 proves *who* someone is. It never decides *what they may do*:
 

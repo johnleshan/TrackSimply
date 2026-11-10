@@ -4,6 +4,7 @@ import { accountStatus, suspensionMessage } from '../lib/accountStatus';
 import {
   getAuth0Client,
   loginWithAuth0 as startAuth0Login,
+  loginWithGoogle as startGoogleLogin,
   logoutFromAuth0,
 } from '../lib/auth0';
 
@@ -248,6 +249,17 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const loginWithGoogle = useCallback(async () => {
+    setAuth0Error('');
+    try {
+      await startGoogleLogin();
+    } catch (err) {
+      setAuth0Error(err && err.message
+        ? err.message
+        : 'Could not reach Google. Check your connection and try again.');
+    }
+  }, []);
+
   // Migration and Initialization
   useEffect(() => {
     const initAuth = async () => {
@@ -376,6 +388,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         loginWithAuth0,
+        loginWithGoogle,
         auth0Error,
         auth0JustSignedIn,
       }}

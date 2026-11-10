@@ -26,6 +26,10 @@ const loadSdk = () => import('@auth0/auth0-spa-js');
 const DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || 'dev-khv0g5lmbvhwr174.us.auth0.com';
 const CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID || 'BRxAT0jrLX8ySZACCOEWptWhr8f7U15I';
 
+/* Auth0's standard identifier for the Google social connection. Override only
+   if the connection was given a different name in the tenant. */
+const GOOGLE_CONNECTION = import.meta.env.VITE_AUTH0_GOOGLE_CONNECTION || 'google-oauth2';
+
 /* The callback must match an Allowed Callback URL in the Auth0 application and
    the origin must match an Allowed Web Origin, or the login fails on return.
    Deriving it from the current origin means a local session on
@@ -61,14 +65,28 @@ export function getAuth0Client() {
 }
 
 /** Sends the browser to Auth0's Universal Login page. */
-export async function loginWithAuth0({ signup = false } = {}) {
+export async function loginWithAuth0({ signup = false, connection } = {}) {
   const client = await getAuth0Client();
   await client.loginWithRedirect({
     authorizationParams: {
       redirect_uri: auth0RedirectUri(),
+      // Supplying a connection sends the visitor straight to that provider
+      // instead of the Auth0 chooser page. Without it, Universal Login shows
+      // every connection enabled for the application.
+      ...(connection ? { connection } : {}),
       ...(signup ? { screen_hint: 'signup' } : {}),
     },
   });
+}
+
+/**
+ * Google, specifically. Auth0 creates the identity on first use, so this is
+ * both "sign up" and "sign in" — Google decides whether the account is new.
+ * That is why there is no separate signup variant: two buttons doing the same
+ * thing would only confuse.
+ */
+export async function loginWithGoogle() {
+  return loginWithAuth0({ connection: GOOGLE_CONNECTION });
 }
 
 /** Ends the Auth0 session as well as the local one. */
