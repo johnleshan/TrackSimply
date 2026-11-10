@@ -40,17 +40,43 @@ nothing: no linked row means no entry. Linking is deliberate — an administrato
 fills in **Linked email** on an account in Account Management. The database
 enforces the "exactly one" part with a unique index on `lower(email)`.
 
+**Linking an email does not close the password.** They are separate doors, and
+the old shared password would keep working. To actually stop it, the account
+must be marked **Require Auth0 sign-in** (`auth0_required`). After that the
+password path refuses it, even with the correct password, and says why:
+
+> This account now signs in with Auth0. Use "Continue with Auth0" below — a
+> password will not work.
+
+This is a deliberate two-step so nobody is locked out by accident: link the
+address, confirm Auth0 signs that person in once, *then* tick the switch. New
+accounts in Account Management are Auth0-only by default and cannot be saved
+without a linked email.
+
 **Setup:**
 
-1. Apply `supabase/migrations/0003_user_email.sql`.
+1. Apply `supabase/migrations/0003_user_email.sql`, then
+   `0004_auth0_required.sql` (0004 depends on 0003).
 2. In Account Management, set **Linked email** on the accounts that should use
-   Auth0. Leave it blank to keep an account password-only.
+   Auth0.
 3. In the Auth0 application, list every origin the app runs on under Allowed
    Callback URLs, Allowed Logout URLs and Allowed Web Origins — including
    `http://localhost:5173` for local work. A missing entry appears as
    "Callback URL mismatch" after login.
-4. Leave the address unverified in Auth0 and sign-in is refused on purpose. That
-   is what stops someone claiming `admin@yourcompany.com` by simply typing it.
+4. Sign in with Auth0 once per account to confirm it lands on the right role.
+5. Only then tick **Require Auth0 sign-in**.
+
+**Break-glass.** If an Auth0-only account must be recovered while Auth0 is
+unavailable, put the password door back for that one account:
+
+```sql
+update public.site_users set auth0_required = false where username = '...';
+```
+
+That is possible on purpose: this is a lock, not a one-way door.
+
+Leaving the address unverified in Auth0 means sign-in is refused. That is what
+stops someone claiming `admin@yourcompany.com` by simply typing it.
 
 `VITE_AUTH0_DOMAIN` and `VITE_AUTH0_CLIENT_ID` are public and may be committed;
 the client secret of an SPA does not exist. The SDK itself is loaded on demand,

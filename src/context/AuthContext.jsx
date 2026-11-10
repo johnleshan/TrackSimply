@@ -316,24 +316,41 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
+      /* Look the account up by username first, then decide. Matching username
+         AND password in the query would leave no way to tell "wrong password"
+         from "this account has been moved to Auth0", and the second case needs
+         to say so instead of pretending the password was wrong. */
       const { data, error } = await supabase
         .from('site_users')
         .select('*')
         .eq('username', username)
-        .eq('password', password)
-        .single();
-      
-      if (error || !data) {
-        console.error('Login attempt failed for:', username, error ? `(Error: ${error.message})` : '(User not found or password mismatch)');
+        .limit(1);
+
+      if (error || !data || data.length === 0) {
+        console.error('Login attempt failed for:', username, error ? `(Error: ${error.message})` : '(User not found)');
         return { success: false, reason: 'Invalid username or password' };
       }
 
-      console.log('Login successful for:', username);
+      const account = data[0];
+
+      /* An account that has been moved to Auth0 must not be reachable with a
+         password, even the correct one. Without this check, linking an email
+         would add a new door while leaving the old shared password wide open. */
+      if (account.auth0_required === true) {
+        return {
+          success: false,
+          reason: 'This account now signs in with Auth0. Use "Continue with Auth0" below — a password will not work.',
+        };
+      }
+
+      if (account.password !== password) {
+        return { success: false, reason: 'Invalid username or password' };
+      }
 
       /* Deactivation and suspension are checked before the session is created.
          Both are enforced here rather than in the screen, so a suspended user
          cannot reach the app by any route that signs in. */
-      const status = accountStatus(data);
+      const status = accountStatus(account);
 
       if (status.key === 'inactive') {
         return { success: false, reason: 'This account has been deactivated by an administrator.' };
@@ -343,7 +360,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, reason: suspensionMessage(status) };
       }
 
-      const sessionUser = { id: data.id, role: data.role, username: data.username };
+      const sessionUser = { id: account.id, role: account.role, username: account.username };
       setUser(sessionUser);
       return { success: true };
     } catch (err) {

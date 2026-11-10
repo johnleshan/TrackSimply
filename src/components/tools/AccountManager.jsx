@@ -131,11 +131,12 @@ const AccountManager = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user', email: '' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user', email: '', auth0Required: true });
   const [showPassword, setShowPassword] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState('');
   const [hasEmailColumn, setHasEmailColumn] = useState(false);
+  const [hasAuth0RequiredColumn, setHasAuth0RequiredColumn] = useState(false);
 
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspendSaving, setSuspendSaving] = useState(false);
@@ -156,6 +157,7 @@ const AccountManager = () => {
       // guessing, so ordinary account edits keep working before it is applied.
       if (data.length > 0) {
         setHasEmailColumn(Object.prototype.hasOwnProperty.call(data[0], 'email'));
+        setHasAuth0RequiredColumn(Object.prototype.hasOwnProperty.call(data[0], 'auth0_required'));
       }
     }
     setLoading(false);
@@ -185,12 +187,26 @@ const AccountManager = () => {
     // Stored lowercased so the Auth0 match is exact and case cannot split one
     // person across two rows.
     const email = String(newUser.email || '').trim().toLowerCase() || null;
+    const auth0Required = Boolean(newUser.auth0Required);
+
+    /* An Auth0-only account with no linked address can never sign in, so the
+       two are refused together here rather than becoming a support call. */
+    if (auth0Required && !email) {
+      setFormError('An Auth0-only account needs a Linked email — otherwise there is no way to sign in.');
+      return;
+    }
+
+    if (auth0Required && !hasAuth0RequiredColumn) {
+      setFormError('Auth0-only accounts need migration 0004. Apply supabase/migrations/0004_auth0_required.sql, then try again.');
+      return;
+    }
 
     /* Send the column only when it is useful. Before migration 0003 runs it does
        not exist, and adding `email: null` to every request would break ordinary
        account changes. When the column is known to exist, an empty value is sent
        deliberately so an administrator can remove a link. */
     const emailField = (email || hasEmailColumn) ? { email } : {};
+    const requiredField = hasAuth0RequiredColumn ? { auth0_required: auth0Required } : {};
 
     const missingColumn = (error) =>
       error && (error.code === '42703' || error.code === 'PGRST204');
@@ -198,7 +214,13 @@ const AccountManager = () => {
     if (editingId) {
       const { error } = await supabase
         .from('site_users')
-        .update({ username: newUser.username, password: newUser.password, role: newUser.role, ...emailField })
+        .update({
+          username: newUser.username,
+          password: newUser.password,
+          role: newUser.role,
+          ...emailField,
+          ...requiredField,
+        })
         .eq('id', editingId);
 
       if (error) {
@@ -217,6 +239,7 @@ const AccountManager = () => {
           password: newUser.password,
           role: newUser.role,
           ...emailField,
+          ...requiredField,
           active: true,
         }]);
 
@@ -228,7 +251,7 @@ const AccountManager = () => {
       }
       fetchUsers();
     }
-    setNewUser({ username: '', password: '', role: 'user', email: '' });
+    setNewUser({ username: '', password: '', role: 'user', email: '', auth0Required: true });
     setShowPassword(false);
   };
 
@@ -256,6 +279,7 @@ const AccountManager = () => {
       password: user.password,
       role: user.role,
       email: user.email || '',
+      auth0Required: Boolean(user.auth0_required),
     });
     setFormError('');
     setEditingId(user.id);
@@ -440,8 +464,26 @@ const AccountManager = () => {
               spellCheck={false}
             />
             <p style={{ margin: '6px 0 0', fontSize: '0.72rem', lineHeight: 1.45, color: 'var(--text-dim)' }}>
-              Optional. When set, this verified address can sign in with Auth0 and gets{' '}
-              <strong>this</strong> account&rsquo;s role — never more. Blank means Auth0 cannot reach it.
+              The verified address for Auth0 sign-in. It inherits{' '}
+              <strong>this</strong> account&rsquo;s role — never more. Required when Auth0 sign-in is enforced.
+            </p>
+          </div>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={newUser.auth0Required}
+                onChange={e => {
+                  setNewUser({ ...newUser, auth0Required: e.target.checked });
+                  if (formError) setFormError('');
+                }}
+                style={{ width: 'auto', margin: 0 }}
+              />
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>Require Auth0 sign-in</span>
+            </label>
+            <p style={{ margin: '6px 0 0', fontSize: '0.72rem', lineHeight: 1.45, color: 'var(--text-dim)' }}>
+              When ticked, the old username and password stop working for this account. On by default
+              for new accounts. Leave it unticked until Auth0 has actually signed this person in once.
             </p>
           </div>
           <div style={{ alignSelf: 'end' }}>
@@ -482,6 +524,15 @@ const AccountManager = () => {
                       <span className={`badge ${u.role === 'superadmin' ? 'badge-purple' : u.role === 'admin' ? 'badge-info' : ''}`}>
                         {u.role.toUpperCase()}
                       </span>
+                      {u.auth0_required === true && (
+                        <span
+                          className="badge badge-warning"
+                          style={{ marginLeft: '6px' }}
+                          title="The password path refuses this account; sign-in must go through Auth0."
+                        >
+                          AUTH0 ONLY
+                        </span>
+                      )}
                     </td>
                     <td data-label="Status">
                       <span className={`badge ${STATUS_BADGE[status.key] || ''}`}>
