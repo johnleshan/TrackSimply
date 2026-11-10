@@ -111,9 +111,9 @@ async function findAccountByEmail(email) {
 
   const rows = data || [];
   if (rows.length === 0) {
-    return {
-      error: `No TrackSimply account is linked to ${email}. Ask an administrator to add this email to your account.`,
-    };
+    // Not an error: a verified identity that no account has claimed yet. The
+    // sign-in screen turns this into a "link it to your account" step.
+    return { notFound: true };
   }
   if (rows.length > 1) {
     return {
@@ -130,6 +130,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [auth0Error, setAuth0Error] = useState('');
   const [auth0JustSignedIn, setAuth0JustSignedIn] = useState(false);
+  // A verified address that no account has claimed. Holds the address between
+  // the Auth0 return and the moment the visitor proves they own the account.
+  const [pendingAuth0Email, setPendingAuth0Email] = useState('');
   const logoutTimerRef = useRef(null);
 
   const logout = useCallback(async () => {
@@ -162,10 +165,70 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
 
+  /**
+   * Turns a verified Auth0 profile into an app session, or into a pending link
+   * for an unclaimed account. Shared by the popup flow and the redirect
+   * callback, so the two can never enforce different rules.
+   */
+  const applyAuth0Profile = useCallback(async (profile) => {
+    const verified = Boolean(profile)
+      && (profile.email_verified === true || profile.email_verified === 'true');
+
+    if (!verified) {
+      setAuth0Error('Your email address is not verified yet. Verify it with Auth0, then sign in again.');
+      return;
+    }
+
+    const email = String(profile.email || '').trim().toLowerCase();
+    if (!email) {
+      setAuth0Error('Auth0 did not return an email address for this account.');
+      return;
+    }
+
+    const match = await findAccountByEmail(email);
+    if (match.error) {
+      setAuth0Error(match.error);
+      return;
+    }
+
+    /* No row yet. This is the common case for admin and user: Google has
+       verified who they are, but no account has been linked. Rather than a
+       dead end that only an administrator can clear, hand them a step that
+       asks for their existing username and password. */
+    if (match.notFound) {
+      setPendingAuth0Email(email);
+      return;
+    }
+
+    // The same gate the username/password path uses, so a suspension applies
+    // however someone signs in.
+    const status = accountStatus(match.account);
+    if (status.key === 'inactive') {
+      setAuth0Error('This account has been deactivated by an administrator.');
+      return;
+    }
+    if (status.key === 'suspended') {
+      setAuth0Error(suspensionMessage(status));
+      return;
+    }
+
+    // The password is deliberately not carried into the session, exactly as on
+    // the username/password path.
+    setUser({
+      id: match.account.id,
+      role: match.account.role,
+      username: match.account.username,
+      email,
+      auth0: true,
+    });
+    setPendingAuth0Email('');
+    setAuth0JustSignedIn(true);
+  }, []);
+
   /* Handles the return trip from Auth0's Universal Login. Runs before the app
      renders, so a callback is never half-applied.
 
-     The whole security rule lives here, in one place:
+     The whole security rule lives in applyAuth0Profile:
        - trust the address only if Auth0 reports it verified
        - it must match exactly one linked row
        - the role comes from that row, never from Auth0
@@ -191,73 +254,140 @@ export const AuthProvider = ({ children }) => {
       window.history.replaceState({}, '', window.location.pathname);
 
       const profile = await client.getUser();
-      const verified = Boolean(profile)
-        && (profile.email_verified === true || profile.email_verified === 'true');
-
-      if (!verified) {
-        setAuth0Error('Your Auth0 email address is not verified yet. Verify it, then sign in again.');
-        return;
-      }
-
-      const email = String(profile.email || '').trim().toLowerCase();
-      if (!email) {
-        setAuth0Error('Auth0 did not return an email address for this account.');
-        return;
-      }
-
-      const match = await findAccountByEmail(email);
-      if (match.error) {
-        setAuth0Error(match.error);
-        return;
-      }
-
-      // The same gate the username/password path uses, so a suspension applies
-      // however someone signs in.
-      const status = accountStatus(match.account);
-      if (status.key === 'inactive') {
-        setAuth0Error('This account has been deactivated by an administrator.');
-        return;
-      }
-      if (status.key === 'suspended') {
-        setAuth0Error(suspensionMessage(status));
-        return;
-      }
-
-      // The password is deliberately not carried into the session, exactly as
-      // on the username/password path.
-      setUser({
-        id: match.account.id,
-        role: match.account.role,
-        username: match.account.username,
-        email,
-        auth0: true,
-      });
-      setAuth0JustSignedIn(true);
+      await applyAuth0Profile(profile);
     } catch (err) {
       setAuth0Error(err && err.message ? err.message : 'Auth0 sign-in failed. Please try again.');
     }
-  }, []);
+  }, [applyAuth0Profile]);
 
   const loginWithAuth0 = useCallback(async ({ signup = false } = {}) => {
     setAuth0Error('');
+    setPendingAuth0Email('');
     try {
-      await startAuth0Login({ signup });
+      const profile = await startAuth0Login({ signup });
+      await applyAuth0Profile(profile);
     } catch (err) {
+      // Closing the window is a cancellation, not a failure worth shouting about.
+      // auth0-spa-js reports it as error "cancelled" / message "Popup closed".
+      if (err && (err.error === 'cancelled' || err.error === 'popup_closed_by_user')) return;
+      if (err && (err.error === 'popup_open_failed' || err.error === 'popup_blocked_by_browser')) {
+        setAuth0Error('Your browser blocked the sign-in window. Allow popups for this site, then try again.');
+        return;
+      }
       setAuth0Error(err && err.message
         ? err.message
         : 'Could not reach Auth0. Check your connection and try again.');
     }
-  }, []);
+  }, [applyAuth0Profile]);
 
   const loginWithGoogle = useCallback(async () => {
     setAuth0Error('');
+    setPendingAuth0Email('');
     try {
-      await startGoogleLogin();
+      const profile = await startGoogleLogin();
+      await applyAuth0Profile(profile);
     } catch (err) {
+      if (err && (err.error === 'cancelled' || err.error === 'popup_closed_by_user')) return;
+      if (err && (err.error === 'popup_open_failed' || err.error === 'popup_blocked_by_browser')) {
+        setAuth0Error('Your browser blocked the sign-in window. Allow popups for this site, then try again.');
+        return;
+      }
       setAuth0Error(err && err.message
         ? err.message
         : 'Could not reach Google. Check your connection and try again.');
     }
+  }, [applyAuth0Profile]);
+
+  /**
+   * Links the verified address to an existing account, from the sign-in screen.
+   *
+   * This is what makes the rollout self-service: an administrator does not have
+   * to collect anyone's email. The person proves they already own the account
+   * with its username and password — the same bar as the normal sign-in — while
+   * the address itself was proven by Auth0. Nothing about the role changes.
+   *
+   * On success the account is switched to Auth0-only in the same write, which
+   * is the behaviour superadmin already has. From then the password stops
+   * working; see the rollback note in 0004_auth0_required.sql.
+   */
+  const linkAuth0Account = useCallback(async (username, password) => {
+    const email = pendingAuth0Email;
+    if (!email) {
+      return { success: false, reason: 'Start again with Google or Auth0.' };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('site_users')
+        .select('*')
+        .eq('username', username)
+        .limit(1);
+
+      if (error || !data || data.length === 0) {
+        return { success: false, reason: 'Invalid username or password' };
+      }
+
+      const account = data[0];
+
+      // Proving ownership of the existing account. Without this, anyone with a
+      // Google account could claim 'admin' by typing its name.
+      if (account.password !== password) {
+        return { success: false, reason: 'Invalid username or password' };
+      }
+
+      const status = accountStatus(account);
+      if (status.key === 'inactive') {
+        return { success: false, reason: 'This account has been deactivated by an administrator.' };
+      }
+      if (status.key === 'suspended') {
+        return { success: false, reason: suspensionMessage(status) };
+      }
+
+      // Never overwrite someone else's link. An account with a different email
+      // already belongs to a different identity.
+      if (account.email && account.email.toLowerCase() !== email) {
+        return {
+          success: false,
+          reason: 'This account is already linked to a different email. An administrator can change it.',
+        };
+      }
+
+      const { error: updateError } = await supabase
+        .from('site_users')
+        .update({ email, auth0_required: true })
+        .eq('id', account.id);
+
+      if (updateError) {
+        if (updateError.code === '23505') {
+          return { success: false, reason: 'That email is already linked to another account.' };
+        }
+        const missingColumn = updateError.code === '42703' || updateError.code === 'PGRST204';
+        return {
+          success: false,
+          reason: missingColumn
+            ? 'Linking needs migrations 0003 and 0004. Apply them in the Supabase SQL Editor, then try again.'
+            : `Could not link the email: ${updateError.message || 'unknown error'}`,
+        };
+      }
+
+      setUser({
+        id: account.id,
+        role: account.role,
+        username: account.username,
+        email,
+        auth0: true,
+      });
+      setPendingAuth0Email('');
+      setAuth0JustSignedIn(true);
+      return { success: true };
+    } catch (err) {
+      return { success: false, reason: 'Connection error. Please try again.' };
+    }
+  }, [pendingAuth0Email]);
+
+  const cancelAuth0Link = useCallback(() => {
+    setPendingAuth0Email('');
+    setAuth0Error('');
   }, []);
 
   // Migration and Initialization
@@ -389,6 +519,9 @@ export const AuthProvider = ({ children }) => {
         loading,
         loginWithAuth0,
         loginWithGoogle,
+        pendingAuth0Email,
+        linkAuth0Account,
+        cancelAuth0Link,
         auth0Error,
         auth0JustSignedIn,
       }}

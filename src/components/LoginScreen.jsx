@@ -98,7 +98,15 @@ const SlideDots = ({ index, onSelect }) => {
  * ------------------------------------------------------------------ */
 
 export default function LoginScreen({ onBack }) {
-  const { login, loginWithAuth0, loginWithGoogle, auth0Error } = useAuth();
+  const {
+    login,
+    loginWithAuth0,
+    loginWithGoogle,
+    pendingAuth0Email,
+    linkAuth0Account,
+    cancelAuth0Link,
+    auth0Error,
+  } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -148,14 +156,16 @@ export default function LoginScreen({ onBack }) {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setError('');
-    const result = await login(username, password);
+    const result = pendingAuth0Email
+      ? await linkAuth0Account(username, password)
+      : await login(username, password);
     if (!result.success) {
       setError(result.reason);
       setIsSubmitting(false);
     }
     // On success the provider swaps this screen out, so isSubmitting is
     // deliberately left true to keep the button inert during the transition.
-  }, [isSubmitting, login, username, password]);
+  }, [isSubmitting, login, linkAuth0Account, pendingAuth0Email, username, password]);
 
   const ready = username.trim().length > 0 && password.length > 0;
 
@@ -188,6 +198,23 @@ export default function LoginScreen({ onBack }) {
           </div>
 
           <h1 className="k-headline">Sign in to TrackSimply</h1>
+
+          {/* Reached after a verified Google/Auth0 sign-in that matches no
+              account. The user proves they already own one, so an administrator
+              never has to collect email addresses. */}
+          {pendingAuth0Email && (
+            <div className="k-link" role="status">
+              <p className="k-link__title">Link {pendingAuth0Email}</p>
+              <p className="k-link__body">
+                That address is verified, but it is not attached to a TrackSimply account yet.
+                Enter your existing username and password once. After this, the account signs in
+                with Google or Auth0 instead.
+              </p>
+              <button type="button" className="k-link__cancel" onClick={cancelAuth0Link}>
+                Cancel
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="k-form" noValidate>
             <label className="k-field-label" htmlFor="login-username">Username</label>
@@ -246,39 +273,47 @@ export default function LoginScreen({ onBack }) {
               className={`k-submit ${ready ? 'is-ready' : ''}`}
               disabled={isSubmitting || !ready}
             >
-              {isSubmitting ? 'Verifying account…' : 'Sign in'}
+              {isSubmitting
+                ? (pendingAuth0Email ? 'Linking…' : 'Verifying account…')
+                : (pendingAuth0Email ? 'Link and sign in' : 'Sign in')}
             </button>
           </form>
 
-          <div className="k-divider" role="separator" aria-label="or">
-            <span>or</span>
-          </div>
+          {!pendingAuth0Email && (
+            <>
+              <div className="k-divider" role="separator" aria-label="or">
+                <span>or</span>
+              </div>
 
-          {/* Both of these prove identity only. The role still comes from the
-              account an administrator linked to the verified email, so neither
-              button can grant more than that account already has. */}
-          <button
-            type="button"
-            className="k-google"
-            onClick={handleGoogle}
-            disabled={Boolean(authBusy) || isSubmitting}
-          >
-            <GoogleIcon />
-            <span>{authBusy === 'google' ? 'Opening Google…' : 'Continue with Google'}</span>
-          </button>
+              {/* Both of these prove identity only. The role still comes from
+                  the account linked to the verified email, so neither button can
+                  grant more than that account already has. Each opens in a
+                  window you can close to cancel. */}
+              <button
+                type="button"
+                className="k-google"
+                onClick={handleGoogle}
+                disabled={Boolean(authBusy) || isSubmitting}
+              >
+                <GoogleIcon />
+                <span>{authBusy === 'google' ? 'Waiting for Google…' : 'Continue with Google'}</span>
+              </button>
 
-          <button
-            type="button"
-            className="k-auth0"
-            onClick={handleAuth0}
-            disabled={Boolean(authBusy) || isSubmitting}
-          >
-            {authBusy === 'auth0' ? 'Opening Auth0…' : 'Continue with Auth0'}
-          </button>
+              <button
+                type="button"
+                className="k-auth0"
+                onClick={handleAuth0}
+                disabled={Boolean(authBusy) || isSubmitting}
+              >
+                {authBusy === 'auth0' ? 'Waiting for Auth0…' : 'Continue with Auth0'}
+              </button>
 
-          <p className="k-auth0-note">
-            Use the verified email an administrator linked to your account.
-          </p>
+              <p className="k-auth0-note">
+                A sign-in window opens. Close it to cancel. Use the verified email linked to
+                your account.
+              </p>
+            </>
+          )}
 
           <p className="k-note">
             Accounts are created by an administrator. If you need access, ask the person who

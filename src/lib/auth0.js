@@ -64,19 +64,27 @@ export function getAuth0Client() {
   return clientPromise;
 }
 
-/** Sends the browser to Auth0's Universal Login page. */
+/**
+ * Opens Auth0 in a POPUP and resolves with the user profile once the provider
+ * is finished.
+ *
+ * A popup is deliberate. A full-page redirect hands the visitor to a hosted
+ * page we do not control, with no way back except the browser's history; a
+ * popup is a real window with its own close button, so cancelling is always
+ * possible. It also leaves the app where it was instead of reloading it.
+ */
 export async function loginWithAuth0({ signup = false, connection } = {}) {
   const client = await getAuth0Client();
-  await client.loginWithRedirect({
+  await client.loginWithPopup({
     authorizationParams: {
       redirect_uri: auth0RedirectUri(),
       // Supplying a connection sends the visitor straight to that provider
-      // instead of the Auth0 chooser page. Without it, Universal Login shows
-      // every connection enabled for the application.
+      // instead of the Auth0 chooser page.
       ...(connection ? { connection } : {}),
       ...(signup ? { screen_hint: 'signup' } : {}),
     },
   });
+  return client.getUser();
 }
 
 /**

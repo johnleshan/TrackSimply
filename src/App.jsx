@@ -110,7 +110,7 @@ const AppHeader = ({ title, theme, toggleTheme, logout, isCollapsed, user, onOpe
 );
 
 function App() {
-  const { user, logout, loading, auth0Error, auth0JustSignedIn } = useAuth();
+  const { user, logout, loading, auth0Error, auth0JustSignedIn, pendingAuth0Email } = useAuth();
   const [activeTool, setActiveTool] = useState('overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -146,11 +146,12 @@ function App() {
     if (auth0JustSignedIn) setEntered(true);
   }, [auth0JustSignedIn]);
 
-  // A refused Auth0 sign-in has a reason the visitor needs to read, and the
-  // only place it is shown is the sign-in screen.
+  // A refused Auth0 sign-in has a reason the visitor needs to read, and an
+  // unclaimed address needs the "link it" form. The sign-in screen is the only
+  // place either is shown.
   useEffect(() => {
-    if (auth0Error) setShowLogin(true);
-  }, [auth0Error]);
+    if (auth0Error || pendingAuth0Email) setShowLogin(true);
+  }, [auth0Error, pendingAuth0Email]);
 
   // Open once by itself when the visitor is INSIDE the app and there is an
   // unread release. Gated on steppedIn as well as user: a returning user's

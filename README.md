@@ -66,18 +66,36 @@ address, confirm Auth0 signs that person in once, *then* tick the switch. New
 accounts in Account Management are Auth0-only by default and cannot be saved
 without a linked email.
 
+**Self-service linking.** An administrator never has to collect anyone's email.
+When someone signs in with Google or Auth0 and their verified address is not
+linked yet, the app asks for their existing username and password once, on the
+same screen. That proves they already own the account — without it, anyone with
+a Google account could claim `admin` by typing the name. On success the address
+is linked and the account is switched to Auth0-only in the same write. The role
+is never changed. If the account already has a different email, the link is
+refused.
+
+**Verification.** An address is accepted only when Auth0 reports
+`email_verified = true`. Google always returns verified addresses. For the
+Auth0 email/password connection, turn on **Require Email Verification**
+(Authentication → Database → Username-Password-Authentication) or the same
+person will be refused until they click the link Auth0 sends.
+
+Both social buttons open Auth0 in a popup window rather than navigating away.
+The popup is a real window with its own close button, so cancelling is always
+available; closing it returns to the sign-in screen with no error.
+
 **Setup:**
 
 1. Apply `supabase/migrations/0003_user_email.sql`, then
    `0004_auth0_required.sql` (0004 depends on 0003).
-2. In Account Management, set **Linked email** on the accounts that should use
-   Auth0.
-3. In the Auth0 application, list every origin the app runs on under Allowed
+2. In the Auth0 application, list every origin the app runs on under Allowed
    Callback URLs, Allowed Logout URLs and Allowed Web Origins — including
-   `http://localhost:5173` for local work. A missing entry appears as
+   `http://localhost:5173/` for local work. A missing entry appears as
    "Callback URL mismatch" after login.
-4. Sign in with Auth0 once per account to confirm it lands on the right role.
-5. Only then tick **Require Auth0 sign-in**.
+3. Sign in with Google or Auth0. An unlinked account is asked to link itself, as
+   described above. No administrator action is needed.
+4. To keep an account on the password instead, simply do not link it.
 
 **Break-glass.** If an Auth0-only account must be recovered while Auth0 is
 unavailable, put the password door back for that one account:
